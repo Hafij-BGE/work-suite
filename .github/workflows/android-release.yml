@@ -66,7 +66,7 @@ jobs:
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
-          name: WorkSuite Writer ${{ env.TAG }}
+          name: WorkSuite ${{ env.TAG }}
           body_path: packaging/android/release-notes.md
           prerelease: true
           files: |

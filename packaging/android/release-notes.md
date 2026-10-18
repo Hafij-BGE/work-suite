@@ -1,24 +1,28 @@
-WorkSuite Writer, a free, open-source word processor for Android, based on
-[WordCraft](https://github.com/storytold/wordcraft).
+WorkSuite, a free, open-source office suite for Android: **Writer**, **Slides** and **Sheets** in
+one app, based on [WordCraft](https://github.com/storytold/wordcraft),
+[DeckCraft](https://github.com/storytold/deckcraft) and
+[GridCraft](https://github.com/storytold/gridcraft).
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
-## New in 0.8.1
+## New in 0.9.0
 
-- **New name and icon:** WordCraft for Android is now *WorkSuite Writer*, with its own icon.
-- **Android's file picker:** Open, Save As, Export and Insert › Pictures use the system picker, so
-  you can reach Downloads, Documents, SD cards and cloud storage (Drive and others).
-- **Open with:** documents (.docx, .doc, .odt, .rtf, .txt, .md) open from your file manager, mail
-  and chat apps with "Open with" or "Share".
-- **Saves go back:** saving a document you opened from another place updates that file.
-- The "All files access" permission is no longer needed or asked for.
+- **One suite, three apps:** a home screen to start Writer (documents), Slides (presentations) or
+  Sheets (spreadsheets), and a bar at the top to switch between them; each keeps its files open.
+- **Open a file…** on the home screen, and "Open with" from file managers, open each file in the
+  app it belongs to (.docx and text in Writer, .pptx in Slides, .xlsx and .csv in Sheets).
+- **Slides and Sheets for phones:** the same lighter ribbon and short File menu as Writer (Home,
+  New, Open, Save, Save As, Export, Close, About), touch scrolling, pinch zoom and Android's file
+  picker.
+- New name and icon: *WorkSuite*.
 
 ## Install
 
-1. Download `WorkSuite-Writer-0.8.1-android-release.apk` below, on your phone.
+1. Download `WorkSuite-0.9.0-android-release.apk` below, on your phone.
 2. Open it, and allow installing from that app when Android asks.
 
-If 0.8.0 (WordCraft) is installed, uninstall it first: each preview is signed with a different key.
+If an earlier preview (WordCraft or WorkSuite Writer) is installed, uninstall it first: each
+preview is signed with a different key.
 
 For 64-bit ARM phones and tablets running Android 8 or later.
 
@@ -26,5 +30,6 @@ For 64-bit ARM phones and tablets running Android 8 or later.
 
 - The on-screen keyboard types letters, digits and punctuation; Bengali and other composed scripts,
   swipe typing and autocorrect may not work yet. A hardware keyboard works.
+- Saving a new presentation or workbook asks where to save it; once saved, Save writes back to it.
 - Copy and paste work inside the app only, not with other apps.
 - No printing: export a PDF and print that.

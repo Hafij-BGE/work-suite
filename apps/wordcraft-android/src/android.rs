@@ -1,57 +1,50 @@
 //! Android's entry point, the system file picker and the folders the app uses.
 //!
-//! - Open, Save As, Export and Insert › Pictures show Android's own file picker ([`crate::saf`]),
+//! - The suite ([`crate::suite`]): Writer, Slides and Sheets, and a home screen to pick one.
+//! - Open, Save As, Export and inserting pictures show Android's own file picker ([`crate::saf`]),
 //!   which reaches every storage app (Downloads, Drive…); documents opened from a file manager
-//!   ("Open with") arrive the same way. When the picker can't be reached, the built-in browser
-//!   shows instead.
+//!   ("Open with") arrive the same way and open in the app their type belongs to. When the picker
+//!   can't be reached, Writer shows its built-in browser instead.
 //! - Settings, logs and local recovery: the app's private folder (`internal_data_path`), which
 //!   Android removes with the app.
-//! - The built-in file browser starts in `Documents/WorkSuite Writer` in shared storage (its Home
+//! - Writer's built-in file browser starts in `Documents/WorkSuite` in shared storage (its Home
 //!   folder), or the app's own folder there (`Android/data/…/files`) when that can't be made.
 
-use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::sync::mpsc::Sender;
 
 use winit::platform::android::activity::AndroidApp;
-use wordcraft_ui_egui::{FileDialogAnswer, FileDialogRequest, Services};
 
 use crate::saf::Saf;
-use crate::shell::Shell;
-
-/// The pending picker's answer goes here.
-type Pending = Rc<RefCell<Option<Sender<FileDialogAnswer>>>>;
+use crate::suite::{Files, Picker, SUITE_NAME, Suite};
 
 /// Shared storage's Documents folder (the same path on every current Android device).
 const SHARED_DOCUMENTS: &str = "/storage/emulated/0/Documents";
+
+/// How often saved documents are copied back to where they came from.
+const SYNC_EVERY: f64 = 2.0;
 
 /// Called by `android-activity` on the app's own thread once the activity starts.
 #[allow(unsafe_code)] // The C symbol NativeActivity looks up; it takes no pointers.
 #[unsafe(no_mangle)]
 fn android_main(app: AndroidApp) {
-    android_logger::init_once(android_logger::Config::default().with_max_level(log::LevelFilter::Info).with_tag("WorkSuiteWriter"));
+    android_logger::init_once(android_logger::Config::default().with_max_level(log::LevelFilter::Info).with_tag("WorkSuite"));
     let folders = Folders::new(&app);
     folders.export();
     let mut options = eframe::NativeOptions { android_app: Some(app.clone()), ..Default::default() };
-    options.viewport = options.viewport.with_title(wordcraft_ui_egui::APP_NAME);
+    options.viewport = options.viewport.with_title(SUITE_NAME);
     let result = eframe::run_native(
-        wordcraft_ui_egui::APP_NAME,
+        SUITE_NAME,
         options,
-        Box::new(move |cc| {
-            // Fingers are less exact than a mouse: a tap a little beside a small button still
-            // presses it.
-            cc.egui_ctx.all_styles_mut(|s| s.interaction.interact_radius = 12.0);
+        Box::new(move |_cc| {
             let saf = Saf::new(&app).map(Rc::new);
-            let pending = Pending::default();
-            let mut shell = Shell::new(services(saf.clone(), pending.clone()), folders.settings.as_ref().map(|d| d.join("ui.json")));
-            if let Some(dir) = &folders.settings {
-                let ctx = cc.egui_ctx.clone();
-                if let Err(e) = shell.word.session.enable_recovery(dir.join("recovery"), std::sync::Arc::new(move || ctx.request_repaint())) {
-                    log::warn!("local recovery unavailable: {e}");
-                }
-            }
-            Ok(Box::new(App { shell, android: app, saf, pending, synced_at: 0.0 }))
+            let files = saf.clone().map(|s| s as Rc<dyn Files>);
+            let suite = Suite::new(
+                Picker::new(files),
+                folders.settings.as_ref().map(|d| d.join("ui.json")),
+                folders.settings.as_ref().map(|d| d.join("recovery")),
+            );
+            Ok(Box::new(App { suite, android: app, saf, synced_at: 0.0 }))
         }),
     );
     if let Err(e) = result {
@@ -59,40 +52,36 @@ fn android_main(app: AndroidApp) {
     }
 }
 
+impl Files for Saf {
+    fn pick_open(&self, purpose: &str) -> bool {
+        Saf::pick_open(self, purpose)
+    }
+    fn pick_save(&self, name: &str) -> bool {
+        Saf::pick_save(self, name)
+    }
+}
+
 struct App {
-    shell: Shell,
+    suite: Suite,
     android: AndroidApp,
     saf: Option<Rc<Saf>>,
-    pending: Pending,
     /// When saved documents were last copied back (input time, seconds).
     synced_at: f64,
 }
-
-/// How often saved documents are copied back to where they came from.
-const SYNC_EVERY: f64 = 2.0;
 
 impl App {
     /// The picker's answer, documents other apps opened with this one, and copying saves back.
     fn files(&mut self, ctx: &egui::Context) {
         let Some(saf) = self.saf.clone() else { return };
-        let waiting = self.pending.borrow().is_some();
-        if waiting {
+        if self.suite.picker().waiting() {
             match saf.take_result() {
-                Some(picked) => {
-                    let answer = if picked.is_empty() { Vec::new() } else { vec![picked] };
-                    if let Some(tx) = self.pending.borrow_mut().take() {
-                        let _ = tx.send(Ok(answer));
-                    }
-                    ctx.request_repaint();
-                }
+                Some(picked) => self.suite.picked(ctx, Some(picked).filter(|p| !p.is_empty())),
                 // Android wakes nothing here when the picker answers: look again shortly.
                 None => ctx.request_repaint_after(std::time::Duration::from_millis(150)),
             }
         }
         while let Some(path) = saf.take_opened() {
-            if let Err(e) = self.shell.word.run("file.open", serde_json::json!({ "path": path })) {
-                log::warn!("{path}: {e}");
-            }
+            self.suite.open_in_app(ctx, &path);
         }
         let now = ctx.input(|i| i.time);
         if now - self.synced_at >= SYNC_EVERY {
@@ -107,42 +96,28 @@ impl App {
 
 impl eframe::App for App {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.shell.logic(ctx) {
+        // Fingers are less exact than a mouse: a tap a little beside a small button still presses
+        // it. (Set again when an app's theme replaced the style.)
+        if ctx.global_style().interaction.interact_radius < 12.0 {
+            ctx.all_styles_mut(|s| s.interaction.interact_radius = 12.0);
+        }
+        if self.suite.logic(ctx) {
             self.android.show_soft_input(true);
         }
         self.files(ctx);
     }
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
-        if let Some(wait) = self.shell.raw_input(raw) {
+        if let Some(wait) = self.suite.raw_input(raw) {
             ctx.request_repaint_after_secs(wait as f32);
         }
     }
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.shell.ui(ui);
+        self.suite.ui(ui);
     }
     fn on_exit(&mut self) {
-        self.shell.save_prefs();
-    }
-}
-
-/// File dialogs through Android's picker; without it, an error that brings up the built-in file
-/// browser.
-fn services(saf: Option<Rc<Saf>>, pending: Pending) -> Services {
-    Services {
-        file_dialog: Some(Box::new(move |req: FileDialogRequest| {
-            let (tx, rx) = std::sync::mpsc::channel::<FileDialogAnswer>();
-            let shown = saf.as_ref().is_some_and(|saf| match &req {
-                FileDialogRequest::Open { purpose } | FileDialogRequest::OpenMany { purpose } => saf.pick_open(purpose),
-                FileDialogRequest::Save { name } => saf.pick_save(name),
-            });
-            if shown {
-                *pending.borrow_mut() = Some(tx);
-            } else {
-                let _ = tx.send(Err("Android's file picker isn't available".into()));
-            }
-            rx
-        })),
-        ..Default::default()
+        if let Some(w) = &self.suite.writer {
+            w.save_prefs();
+        }
     }
 }
 
@@ -159,7 +134,7 @@ impl Folders {
     fn new(app: &AndroidApp) -> Folders {
         let internal = app.internal_data_path();
         let settings = internal.as_ref().map(|d| d.join("settings")).filter(|d| made(d));
-        let shared = PathBuf::from(SHARED_DOCUMENTS).join("WorkSuite Writer");
+        let shared = PathBuf::from(SHARED_DOCUMENTS).join("WorkSuite");
         let documents = if made(&shared) { Some(shared) } else { app.external_data_path().filter(|d| made(d)) };
         let cache = internal.as_ref().map(|d| d.join("cache")).filter(|d| made(d));
         log::info!("folders: settings {settings:?}, documents {documents:?}");

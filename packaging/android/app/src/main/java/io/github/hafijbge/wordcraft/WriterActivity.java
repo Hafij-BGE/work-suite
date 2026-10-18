@@ -84,7 +84,56 @@ public class WriterActivity extends NativeActivity {
 
     // ---- Called from Rust ----
 
-    /** Show the system picker to open a file; {@code purpose} is "document", "picture"… */
+    private static final String[] DOCUMENTS = {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
+        "application/vnd.ms-word.document.macroEnabled.12",
+        "application/msword",
+        "application/vnd.oasis.opendocument.text",
+        "application/rtf",
+        "text/rtf",
+        "text/plain",
+        "text/markdown",
+        "text/html",
+        "text/xml",
+        "application/json",
+    };
+    private static final String[] PRESENTATIONS = {
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
+        "application/vnd.openxmlformats-officedocument.presentationml.template",
+        "application/vnd.ms-powerpoint",
+    };
+    private static final String[] SPREADSHEETS = {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel.sheet.macroEnabled.12",
+        "application/vnd.ms-excel",
+        "text/csv",
+        "text/comma-separated-values",
+        "text/tab-separated-values",
+    };
+
+    private static String[] concat(String[]... lists) {
+        int n = 1;
+        for (String[] l : lists) {
+            n += l.length;
+        }
+        String[] all = new String[n];
+        int i = 0;
+        for (String[] l : lists) {
+            for (String s : l) {
+                all[i++] = s;
+            }
+        }
+        // Some storage apps report every Office file as plain bytes.
+        all[i] = "application/octet-stream";
+        return all;
+    }
+
+    /**
+     * Show the system picker to open a file; {@code purpose} is "document", "presentation",
+     * "spreadsheet", "office" (any of the three), "picture", or anything else for any file.
+     */
     public void pickOpen(String purpose) {
         synchronized (LOCK) {
             result = null;
@@ -93,28 +142,23 @@ public class WriterActivity extends NativeActivity {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        String[] types = null;
+        if ("document".equals(purpose)) {
+            types = concat(DOCUMENTS);
+        } else if ("presentation".equals(purpose)) {
+            types = concat(PRESENTATIONS);
+        } else if ("spreadsheet".equals(purpose)) {
+            types = concat(SPREADSHEETS);
+        } else if ("office".equals(purpose)) {
+            types = concat(DOCUMENTS, PRESENTATIONS, SPREADSHEETS);
+        }
         if ("picture".equals(purpose)) {
             intent.setType("image/*");
-        } else if ("document".equals(purpose)) {
-            intent.setType("*/*");
-            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
-                "application/vnd.ms-word.document.macroEnabled.12",
-                "application/msword",
-                "application/vnd.oasis.opendocument.text",
-                "application/rtf",
-                "text/rtf",
-                "text/plain",
-                "text/markdown",
-                "text/html",
-                "text/xml",
-                "application/json",
-                // Some storage apps report every .docx as plain bytes.
-                "application/octet-stream",
-            });
         } else {
             intent.setType("*/*");
+            if (types != null) {
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, types);
+            }
         }
         start(intent, PICK_OPEN);
     }
@@ -426,6 +470,13 @@ public class WriterActivity extends NativeActivity {
             case "dotx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.template";
             case "docm": return "application/vnd.ms-word.document.macroEnabled.12";
             case "doc": return "application/msword";
+            case "pptx": return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "ppsx": return "application/vnd.openxmlformats-officedocument.presentationml.slideshow";
+            case "potx": return "application/vnd.openxmlformats-officedocument.presentationml.template";
+            case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "xlsm": return "application/vnd.ms-excel.sheet.macroEnabled.12";
+            case "csv": return "text/csv";
+            case "gif": return "image/gif";
             case "odt": return "application/vnd.oasis.opendocument.text";
             case "rtf": return "application/rtf";
             case "pdf": return "application/pdf";

@@ -1538,6 +1538,14 @@ impl SlideApp {
         }
     }
 
+    /// Install this app's fonts and theme into the context again on the next [`SlideApp::logic`]:
+    /// another app sharing the context (the Android office suite) replaced them. Its fonts are
+    /// active from the frame after that `logic`.
+    pub fn restyle(&mut self) {
+        self.styled = false;
+        self.restyle = true;
+    }
+
     /// Per-frame logic before layout: styles, control requests, screenshots, shortcuts.
     pub fn logic(&mut self, ctx: &egui::Context) {
         let scale = self.ui.ui_scale.clamp(0.5, 3.0);

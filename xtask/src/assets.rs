@@ -12,8 +12,14 @@ const ASSET_EXT: &[&str] = &[
     "woff2", "ase", "indd", "idml", "aco", "abr", "docx", "odt", "rtf", "mp4", "wav", "mp3",
 ];
 const ASSET_DIRS: &[&str] = &["assets/", "docs/images/", "examples/"];
+/// The suite's other apps (their own workspaces), whose assets are listed in their own
+/// `ATTRIBUTION.md` and checked by their own `cargo xtask assets`.
+const OWN_ATTRIBUTION: &[&str] = &["deckcraft/", "gridcraft/"];
 
 pub fn is_asset(path: &str) -> bool {
+    if OWN_ATTRIBUTION.iter().any(|d| path.starts_with(d)) {
+        return false;
+    }
     let ext = Path::new(path).extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).unwrap_or_default();
     ASSET_DIRS.iter().any(|d| path.starts_with(d)) || ASSET_EXT.contains(&ext.as_str())
 }
@@ -56,7 +62,13 @@ mod tests {
 
     #[test]
     fn detects_unattributed_assets() {
-        let files = vec!["assets/icons/a.svg".to_string(), "crates/x/src/lib.rs".into(), "docs/images/b.png".into(), "tests/fixture.png".into()];
+        let files = vec![
+            "assets/icons/a.svg".to_string(),
+            "crates/x/src/lib.rs".into(),
+            "docs/images/b.png".into(),
+            "tests/fixture.png".into(),
+            "deckcraft/assets/logo.png".into(),
+        ];
         let md = "| `assets/icons/a.svg` | me | here | MIT |";
         assert_eq!(missing(&files, md), vec!["docs/images/b.png".to_string(), "tests/fixture.png".into()]);
         assert!(!is_asset("crates/x/src/lib.rs"));

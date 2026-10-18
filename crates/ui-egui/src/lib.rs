@@ -2074,6 +2074,15 @@ impl WordApp {
         self.report_dirty();
     }
 
+    /// Install this app's fonts, theme and animation settings into the context again on the next
+    /// [`WordApp::logic`]: another app sharing the context (the Android office suite) replaced
+    /// them. Its fonts are active from the frame after that `logic`.
+    pub fn restyle(&mut self) {
+        self.styled = false;
+        self.applied_theme = None;
+        self.applied_animations = None;
+    }
+
     /// Install the interface fonts when the language, the CJK fallback, or a caption fallback
     /// face has changed since the last install.
     fn install_ui_fonts(&mut self, ctx: &egui::Context, lang: i18n::Lang) {

@@ -1,6 +1,6 @@
 [package]
 name = "wordcraft-android"
-description = "WordCraft for Android phones and tablets (eframe on NativeActivity, wgpu)"
+description = "WorkSuite for Android: Writer (WordCraft), Slides (DeckCraft) and Sheets (GridCraft) in one app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -26,9 +26,17 @@ crate-type = ["cdylib", "rlib"]
 wordcraft-engine = { workspace = true }
 wordcraft-ui-egui = { workspace = true }
 wordcraft-proof = { workspace = true }
+# The suite's other two apps, from their own workspaces (deckcraft/, gridcraft/).
+deckcraft-ui-egui = { path = "../../deckcraft/crates/ui-egui" }
+deckcraft-engine = { path = "../../deckcraft/crates/engine" }
+gridcraft-ui-egui = { path = "../../gridcraft/crates/ui-egui" }
+gridcraft-engine = { path = "../../gridcraft/crates/engine" }
 egui = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+wordcraft-doc = { workspace = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
 eframe = { workspace = true, features = ["default_fonts", "wgpu", "android-native-activity"] }

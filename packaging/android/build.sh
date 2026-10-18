@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the WorkSuite Writer APK (apps/wordcraft-android in a NativeActivity).
+# Build the WorkSuite APK (apps/wordcraft-android in a NativeActivity: Writer, Slides and Sheets).
 #
 #   packaging/android/build.sh [debug|release]
 #
@@ -10,7 +10,7 @@
 # WORDCRAFT_ANDROID_ABIS picks the CPUs (default arm64-v8a, every current phone; add x86_64 for
 # the emulator). A release build is signed with WORDCRAFT_KEYSTORE (and WORDCRAFT_KEYSTORE_PASSWORD,
 # WORDCRAFT_KEY_ALIAS, WORDCRAFT_KEY_PASSWORD) when set, else with the debug key.
-# Output: $DIST/WorkSuite-Writer-<version>-android-<mode>.apk
+# Output: $DIST/WorkSuite-<version>-android-<mode>.apk
 set -euo pipefail
 # The Android app has its own version (packaging/android/VERSION), apart from WordCraft's.
 WORDCRAFT_VERSION="${WORDCRAFT_VERSION:-$(tr -d '[:space:]' < "$(dirname "$0")/VERSION")}"
@@ -44,6 +44,6 @@ echo "sdk.dir=$ANDROID_HOME" > "$HERE/local.properties"
 (cd "$HERE" && "${GRADLE:-gradle}" --no-daemon -q "$TASK" -PwordcraftVersion="$VERSION")
 
 APK="$HERE/app/build/outputs/apk/$MODE/app-$MODE.apk"
-DEST="$DIST/WorkSuite-Writer-$VERSION-android-$MODE.apk"
+DEST="$DIST/WorkSuite-$VERSION-android-$MODE.apk"
 cp "$APK" "$DEST"
 echo "$DEST"

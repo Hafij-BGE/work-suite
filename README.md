@@ -10,10 +10,13 @@
 <h1 align="center">WordCraft</h1>
 
 > [!IMPORTANT]
-> **This copy is WorkSuite Writer: WordCraft adapted for Android** (phones and tablets), based on
-> [storytold/wordcraft](https://github.com/storytold/wordcraft). It keeps a lighter ribbon (File,
-> Home, Insert, Design, Layout), a shorter File menu, and adds touch gestures (drag to scroll,
-> long press for the menu, pinch to zoom). The app is in [`apps/wordcraft-android`](apps/wordcraft-android);
+> **This repository is WorkSuite: an office suite for Android** (phones and tablets) with
+> **Writer** (this WordCraft), **Slides** ([`deckcraft/`](deckcraft), from
+> [storytold/deckcraft](https://github.com/storytold/deckcraft)) and **Sheets**
+> ([`gridcraft/`](gridcraft), from [storytold/gridcraft](https://github.com/storytold/gridcraft)),
+> based on [storytold/wordcraft](https://github.com/storytold/wordcraft). Each keeps a lighter
+> ribbon and a shorter File menu, with touch gestures (drag to scroll, long press for the menu,
+> pinch to zoom) and Android's file picker. The app is in [`apps/wordcraft-android`](apps/wordcraft-android);
 > how to build and install the APK, and what is different on Android, is in
 > [`packaging/android/README.md`](packaging/android/README.md). The rest of this README describes
 > upstream WordCraft.

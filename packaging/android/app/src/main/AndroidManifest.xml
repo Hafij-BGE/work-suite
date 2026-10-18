@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- WorkSuite Writer: a NativeActivity (WriterActivity adds the system file picker and "Open with")
-     running the Rust library apps/wordcraft-android. -->
+<!-- WorkSuite (Writer, Slides and Sheets): a NativeActivity (WriterActivity adds the system file
+     picker and "Open with") running the Rust library apps/wordcraft-android. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- wgpu draws with Vulkan, or OpenGL ES 3 where there is no Vulkan driver. -->
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
 
-    <!-- The built-in file browser's Documents/WorkSuite Writer: Android 10 and earlier need these. The
+    <!-- The built-in file browser's Documents/WorkSuite: Android 10 and earlier need these. The
          system file picker needs no permission. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
@@ -49,6 +49,15 @@
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="text/markdown" />
                 <data android:mimeType="text/x-markdown" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.slideshow" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.template" />
+                <data android:mimeType="application/vnd.ms-powerpoint" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="application/vnd.ms-excel.sheet.macroEnabled.12" />
+                <data android:mimeType="application/vnd.ms-excel" />
+                <data android:mimeType="text/csv" />
+                <data android:mimeType="text/comma-separated-values" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -59,6 +68,9 @@
                 <data android:mimeType="application/rtf" />
                 <data android:mimeType="text/rtf" />
                 <data android:mimeType="text/markdown" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="text/csv" />
             </intent-filter>
         </activity>
     </application>

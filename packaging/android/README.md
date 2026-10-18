@@ -1,18 +1,24 @@
-# WorkSuite Writer (WordCraft for Android)
+# WorkSuite for Android (Writer, Slides and Sheets)
 
-The Android app, *WorkSuite Writer*, is the same editor as the desktop WordCraft (`crates/ui-egui`),
-started from `apps/wordcraft-android` in a `NativeActivity`. A small Java activity
-(`app/src/main/java/…/WriterActivity.java`) adds what only Java can reach: Android's file picker
-and "Open with". The icon is drawn as Android vector drawables (`app/src/main/res`). It runs on Android 8 (API 26) or later,
-on phones and tablets; a tablet, or a phone held sideways, shows the most of the ribbon.
+*WorkSuite* is one Android app with three editors: **Writer** (WordCraft, `crates/ui-egui`),
+**Slides** (DeckCraft, `deckcraft/`) and **Sheets** (GridCraft, `gridcraft/`). It opens on a home
+screen to pick one; a bar at the top switches between them, and each keeps its files open. The app
+is `apps/wordcraft-android` (`suite.rs`) in a `NativeActivity`; a small Java activity
+(`app/src/main/java/…/WriterActivity.java`) adds what only Java can reach: Android's file picker and
+"Open with". The icon is drawn as Android vector drawables (`app/src/main/res`).
+
+DeckCraft and GridCraft keep their own Cargo workspaces (the root workspace excludes them); the
+Android crate depends on their UI crates by path.
 
 ## What is different on Android
 
-- **A lighter ribbon.** File, Home, Insert, Design and Layout. Draw, References, Mailings, Review,
-  View, Developer, Zotero and Help are left out (their commands still work from keyboard shortcuts
-  and the command search, the magnifier in the title bar).
-- **A shorter File menu.** Home, New, Open, Save, Save As, Export, Close and About (and Recover,
-  only when there is something to recover). Print goes through Export › PDF.
+- **A lighter ribbon.** Writer: File, Home, Insert, Design and Layout (Draw, References, Mailings,
+  Review, View, Developer, Zotero and Help left out). Slides: Home, Insert, Design, Transitions and
+  Slide Show (Draw, Animations, Record, Review and View left out). Sheets: Home, Insert, Page
+  Layout, Formulas and Data (Draw, Review, View and Automate left out). Everything left out is  still reachable through keyboard shortcuts
+  and the command search.
+- **A shorter File menu** in all three: Home, New, Open, Save, Save As, Export, Close and About
+  (and, in Writer, Recover, only when there is something to recover). Print goes through Export › PDF.
 - **Touch.**
 
   | Gesture | Does |
@@ -29,9 +35,11 @@ on phones and tablets; a tablet, or a phone held sideways, shows the most of the
   hardware keyboard works with the usual shortcuts.
 - **Files.** Open, Save As, Export and Insert › Pictures use Android's file picker (Downloads,
   Documents, SD cards, Drive…), and documents open from file managers, mail and chat apps ("Open
-  with", "Share"). The editor works on a copy in the app's folder; every save is copied back to the
-  picked document within a couple of seconds, and when the app goes to the background. File › Open
-  › *Browse this device…* is the app's own browser, starting in `Documents/WorkSuite Writer`.
+  with", "Share"), each in the app its type belongs to. The editors work on a copy in the app's
+  folder; every save is copied back to the picked document within a couple of seconds, and when
+  the app goes to the background. A new presentation or workbook asks where to save the first
+  time. Writer's File › Open › *Browse this device…* is its own browser, starting in
+  `Documents/WorkSuite`.
 - **Not on Android (yet):** printing (export a PDF and print that), the system clipboard (copy and
   paste work inside the app), the control channel and MCP bridge.
 
@@ -44,7 +52,7 @@ rustup target add aarch64-linux-android      # and x86_64-linux-android for the 
 cargo install cargo-ndk
 export ANDROID_NDK_HOME=/path/to/android-ndk ANDROID_HOME=/path/to/android-sdk
 packaging/android/build.sh                   # or: build.sh release
-adb install dist/release/WorkSuite-Writer-*-android-debug.apk
+adb install dist/release/WorkSuite-*-android-debug.apk
 ```
 
 The app's version is in [`VERSION`](VERSION), apart from WordCraft's.
@@ -76,7 +84,7 @@ then add the repository secrets `WORDCRAFT_KEYSTORE_BASE64`, `WORDCRAFT_KEYSTORE
 `WORDCRAFT_KEY_ALIAS` (`wordcraft`) and `WORDCRAFT_KEY_PASSWORD` (Settings › Secrets and variables ›
 Actions).
 
-Logs: `adb logcat -s WorkSuiteWriter`.
+Logs: `adb logcat -s WorkSuite`.
 
 ## Known limits
 

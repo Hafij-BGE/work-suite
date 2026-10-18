@@ -991,6 +991,14 @@ impl SheetApp {
     }
 
     /// Per-frame logic (control channel, screenshots). Call before `ui`.
+    /// Install this app's fonts and theme into the context again: another app sharing the context
+    /// (the Android office suite) replaced them. [`SheetApp::logic`] sets them and paints nothing
+    /// until they are active.
+    pub fn restyle(&mut self) {
+        self.fonts_ready = false;
+        self.fonts_set = false;
+    }
+
     pub fn logic(&mut self, ctx: &egui::Context) {
         // A keytip control request lives one frame: the ribbon consumes it during `ui`, and
         // anything that never reached a control (collapsed ribbon, tab switch) is dropped.
