@@ -35,8 +35,11 @@ jobs:
           gradle-version: "8.14.3"
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --locked
-      - name: Install the SDK platform
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+      - name: Install the SDK platform and NDK
+        # The NDK this was tested with (r27c), and the platform Gradle builds against.
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" "ndk;27.2.12479018" > /dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
       - name: Release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.WORDCRAFT_KEYSTORE_BASE64 }}
@@ -49,7 +52,6 @@ jobs:
           fi
       - name: Build the APK
         env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
           WORDCRAFT_KEYSTORE_PASSWORD: ${{ secrets.WORDCRAFT_KEYSTORE_PASSWORD }}
           WORDCRAFT_KEY_ALIAS: ${{ secrets.WORDCRAFT_KEY_ALIAS }}
           WORDCRAFT_KEY_PASSWORD: ${{ secrets.WORDCRAFT_KEY_PASSWORD }}
