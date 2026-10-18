@@ -15,8 +15,8 @@ fn thesaurus_pane_swaps_the_word_at_the_caret() {
     s.execute("text.edit", &json!({"id": id})).unwrap();
     s.execute("text.insert", &json!({"text": "Our Goal is growth."})).unwrap();
     s.execute("text.edit", &json!({"id": id, "at": [0, 6]})).unwrap();
-    let mut app = SlideApp::new(s, Services::default());
-    app.ui.tab = "Review".into();
+    let app = SlideApp::new(s, Services::default());
+
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_step_dt(1.0 / 60.0).build_ui_state(
         |ui, app: &mut SlideApp| {
             app.logic(ui.ctx());
@@ -25,7 +25,8 @@ fn thesaurus_pane_swaps_the_word_at_the_caret() {
         app,
     );
     h.run_steps(3);
-    h.get_by_label("Thesaurus").click();
+    // The Review tab is left out on Android: the pane opens by command.
+    h.state_mut().run("review.thesaurusPane", json!({})).unwrap();
     h.run_steps(3);
     assert_eq!(h.state().ui.pane.as_deref(), Some("thesaurus"));
     assert_eq!(h.state().thesaurus_query, "Goal");

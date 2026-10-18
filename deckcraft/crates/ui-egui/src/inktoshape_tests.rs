@@ -4,7 +4,6 @@
 use deckcraft_engine::Session;
 use egui::{Modifiers, PointerButton, Pos2};
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
 use crate::{Services, SlideApp};
@@ -13,8 +12,8 @@ use crate::{Services, SlideApp};
 fn pen_a_rectangle_then_ink_to_shape() {
     let mut s = Session::with_new();
     s.execute("slide.new", &json!({"layout": "blank"})).unwrap();
-    let mut app = SlideApp::new(s, Services::default());
-    app.ui.tab = "Draw".into();
+    let app = SlideApp::new(s, Services::default());
+
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_step_dt(1.0 / 60.0).build_ui_state(
         |ui, app: &mut SlideApp| {
             app.logic(ui.ctx());
@@ -23,7 +22,8 @@ fn pen_a_rectangle_then_ink_to_shape() {
         app,
     );
     h.run_steps(3);
-    h.get_by_label("Black Pen").click();
+    // The Draw tab is left out on Android: pick its black pen directly.
+    h.state_mut().session.set_tool(deckcraft_engine::ToolKind::Ink { mode: "pen".into(), color: deckcraft_color::Rgba::rgb(20, 20, 20), width: 1.5 });
     h.run_steps(2);
     let (slide, k) = (h.state().slide_rect.unwrap(), h.state().canvas_scale);
     let at = |x: f32, y: f32| slide.min + egui::vec2(x * k, y * k);
@@ -45,7 +45,8 @@ fn pen_a_rectangle_then_ink_to_shape() {
         h.state().session.active().unwrap().shapes().iter().any(|s| matches!(s.kind, deckcraft_model::ShapeKind::Ink { .. }))
     };
     assert!(has_ink(&h), "the pen drew a stroke");
-    h.get_by_label("Ink to Shape").click();
+    h.state_mut().session.set_tool(deckcraft_engine::ToolKind::Select);
+    h.state_mut().run("draw.inkToShape", json!({})).unwrap();
     h.run_steps(3);
     assert!(!has_ink(&h), "the only stroke became a shape");
     let st = h.state().session.active().unwrap();

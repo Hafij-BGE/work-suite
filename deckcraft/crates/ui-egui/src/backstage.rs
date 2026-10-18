@@ -71,7 +71,8 @@ impl Page {
             Page::SaveAs => "Save As",
             Page::Print => "Print",
             Page::Export => "Export",
-            Page::Account => "Account",
+            // Appearance and the product information: the About page on Android.
+            Page::Account => "About",
         }
     }
 
@@ -125,11 +126,13 @@ impl Nav {
 /// The side menu, top group then bottom group, in keyboard order. PowerPoint's Share (cloud) is
 /// left out; with nothing open only Home, New and Open stay at the top.
 pub fn entries(has_doc: bool) -> (Vec<Nav>, Vec<Nav>) {
+    // The Android suite keeps the short list: Info, Print (Export › PDF prints) and Options are
+    // left out of the menu; their pages stay reachable through their commands.
     let mut top = vec![Nav::Page(Page::Home), Nav::Page(Page::New), Nav::Page(Page::Open)];
     if has_doc {
-        top.extend([Nav::Page(Page::Info), Nav::Save, Nav::Page(Page::SaveAs), Nav::Page(Page::Print), Nav::Page(Page::Export), Nav::Close]);
+        top.extend([Nav::Save, Nav::Page(Page::SaveAs), Nav::Page(Page::Export), Nav::Close]);
     }
-    (top, vec![Nav::Page(Page::Account), Nav::Options])
+    (top, vec![Nav::Page(Page::Account)])
 }
 
 /// Print page: which slides.
@@ -695,7 +698,7 @@ fn home(app: &mut SlideApp, ui: &mut Ui, bs: &mut Backstage, out: &mut Outcome) 
     ui.horizontal(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(36.0, 36.0), Sense::hover());
         crate::dialogs::paint_logo(ui.painter(), r);
-        ui.label(RichText::new("DeckCraft").font(theme::bold(24.0)).color(t.text));
+        ui.label(RichText::new(crate::APP_NAME).font(theme::bold(24.0)).color(t.text));
     });
     ui.add_space(18.0);
     ui.horizontal(|ui| {
@@ -1358,7 +1361,7 @@ fn account(app: &mut SlideApp, ui: &mut Ui) {
             });
             ui.add_space(16.0);
             heading(ui, "User Information");
-            dim(ui, "DeckCraft has no accounts: there is nothing to sign in to, and your presentations stay on your device.");
+            dim(ui, "WorkSuite Slides has no accounts: there is nothing to sign in to, and your presentations stay on your device.");
         });
         ui.add_space(40.0);
         ui.vertical(|ui| {
@@ -1366,7 +1369,7 @@ fn account(app: &mut SlideApp, ui: &mut Ui) {
             ui.horizontal(|ui| {
                 let (r, _) = ui.allocate_exact_size(vec2(40.0, 40.0), Sense::hover());
                 crate::dialogs::paint_logo(ui.painter(), r);
-                ui.label(RichText::new("DeckCraft").font(theme::bold(24.0)).color(t.text));
+                ui.label(RichText::new(crate::APP_NAME).font(theme::bold(24.0)).color(t.text));
             });
             dim(ui, &crate::dialogs::version_line());
             dim(ui, "Open source under MIT OR Apache-2.0. Not affiliated with Microsoft.");
@@ -1374,8 +1377,8 @@ fn account(app: &mut SlideApp, ui: &mut Ui) {
             if task(
                 ui,
                 Icon::Help,
-                "About DeckCraft",
-                "About DeckCraft",
+                "About WorkSuite Slides",
+                "About WorkSuite Slides",
                 "The version, the people and models who built it, and where to find us.",
                 true,
             ) {

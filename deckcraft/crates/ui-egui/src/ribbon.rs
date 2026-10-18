@@ -76,7 +76,7 @@ pub fn title_bar(app: &mut SlideApp, ui: &mut Ui) {
         let dirty = app.session.active().is_some_and(|d| d.is_dirty());
         crate::qat::show(app, &mut child);
         let title =
-            app.session.active().map(|d| format!("{}{}", d.title(), if dirty { " — Edited" } else { "" })).unwrap_or_else(|| "DeckCraft".into());
+            app.session.active().map(|d| format!("{}{}", d.title(), if dirty { " — Edited" } else { "" })).unwrap_or_else(|| crate::APP_NAME.into());
         ui.painter().text(rect.center(), Align2::CENTER_CENTER, title, theme::font(13.0), t.text);
         // Right side.
         let mut right = ui.new_child(
@@ -151,7 +151,13 @@ fn contextual(app: &SlideApp) -> Vec<&'static str> {
     v
 }
 
-const TABS: [&str; 10] = ["Home", "Insert", "Draw", "Design", "Transitions", "Animations", "Slide Show", "Record", "Review", "View"];
+/// The tabs the Android suite keeps: what a presentation needs on a phone or tablet. Draw,
+/// Animations, Record, Review and View are left out (their commands still run from shortcuts and
+/// the command search).
+const TABS: [&str; 5] = ["Home", "Insert", "Design", "Transitions", "Slide Show"];
+
+/// Width of the » button that holds the tabs a narrow window has no room for.
+const MORE_TABS_W: f32 = 28.0;
 
 /// Tab row and the ribbon card.
 pub fn show(app: &mut SlideApp, ui: &mut Ui) {
@@ -182,9 +188,15 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
             x += w + 2.0;
         }
         let all: Vec<(&str, bool)> = TABS.iter().map(|s| (*s, false)).chain(ctx_tabs.iter().map(|s| (*s, true))).collect();
+        // A phone in portrait: the tabs past the window's edge go into a » menu at the end.
+        let mut left_out: Vec<&str> = Vec::new();
         for (name, contextual) in all {
             let font = theme::font(13.0);
             let w = ui.fonts_mut(|f| f.layout_no_wrap(name.to_string(), font.clone(), t.text).size().x) + 18.0;
+            if !left_out.is_empty() || x + w > rect.max.x - MORE_TABS_W - 8.0 {
+                left_out.push(name);
+                continue;
+            }
             let r = Rect::from_min_size(pos2(x, y), vec2(w, 24.0));
             let resp = ui.interact(r, ui.id().with(("tab", name)), Sense::click());
             let active = app.ui.tab == name;
@@ -211,6 +223,22 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
             }
             x += w + 2.0;
         }
+        if !left_out.is_empty() {
+            let r = Rect::from_min_size(pos2(x, y), vec2(MORE_TABS_W, 24.0));
+            let resp = ui.interact(r, ui.id().with("tab_more"), Sense::click());
+            resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "More tabs"));
+            let holds_active = left_out.contains(&app.ui.tab.as_str());
+            ui.painter().text(r.center(), Align2::CENTER_CENTER, "»", theme::font(15.0), if holds_active { t.accent } else { t.text });
+            egui::Popup::menu(&resp).show(|ui| {
+                for name in &left_out {
+                    if ui.selectable_label(app.ui.tab == *name, *name).clicked() {
+                        app.ui.tab = (*name).to_string();
+                        app.ui.ribbon_collapsed = false;
+                        ui.close();
+                    }
+                }
+            });
+        }
         if app.ui.ribbon_collapsed {
             return;
         }
@@ -222,31 +250,39 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
         let mut cui = ui.new_child(egui::UiBuilder::new().max_rect(inner).layout(egui::Layout::left_to_right(egui::Align::Min)));
         cui.set_clip_rect(inner.expand2(vec2(0.0, 3.0)));
         cui.spacing_mut().item_spacing.x = 1.0;
-        let ui = &mut cui;
         let tab = app.ui.tab.clone();
-        match tab.as_str() {
-            "Home" => home(app, ui),
-            "Insert" => insert(app, ui),
-            "Draw" => draw(app, ui),
-            "Design" => design(app, ui),
-            "Transitions" => transitions(app, ui),
-            "Animations" => animations(app, ui),
-            "Slide Show" => slide_show(app, ui),
-            "Record" => record(app, ui),
-            "Review" => review(app, ui),
-            "View" => view(app, ui),
-            "Shape Format" => shape_format(app, ui),
-            "Picture Format" => picture_format(app, ui),
-            "Table Design" => table_design(app, ui),
-            "Layout" => table_layout(app, ui),
-            "Chart Design" => chart_design(app, ui),
-            "SmartArt Design" => smartart_design(app, ui),
-            "Playback" => playback(app, ui),
-            "Slide Master" => slide_master(app, ui),
-            "Handout Master" => handout_master(app, ui),
-            "Notes Master" => notes_master(app, ui),
-            _ => {}
-        }
+        // Narrower than the tab's groups (a phone): the row scrolls sideways under a finger.
+        egui::ScrollArea::horizontal().id_salt("ribbon_row").scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).show(
+            &mut cui,
+            |ui| {
+                ui.horizontal_top(|ui| {
+                    ui.spacing_mut().item_spacing.x = 1.0;
+                    match tab.as_str() {
+                        "Home" => home(app, ui),
+                        "Insert" => insert(app, ui),
+                        "Draw" => draw(app, ui),
+                        "Design" => design(app, ui),
+                        "Transitions" => transitions(app, ui),
+                        "Animations" => animations(app, ui),
+                        "Slide Show" => slide_show(app, ui),
+                        "Record" => record(app, ui),
+                        "Review" => review(app, ui),
+                        "View" => view(app, ui),
+                        "Shape Format" => shape_format(app, ui),
+                        "Picture Format" => picture_format(app, ui),
+                        "Table Design" => table_design(app, ui),
+                        "Layout" => table_layout(app, ui),
+                        "Chart Design" => chart_design(app, ui),
+                        "SmartArt Design" => smartart_design(app, ui),
+                        "Playback" => playback(app, ui),
+                        "Slide Master" => slide_master(app, ui),
+                        "Handout Master" => handout_master(app, ui),
+                        "Notes Master" => notes_master(app, ui),
+                        _ => {}
+                    }
+                })
+            },
+        );
     });
 }
 

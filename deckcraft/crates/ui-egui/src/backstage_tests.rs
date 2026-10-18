@@ -89,8 +89,8 @@ fn page_ids_round_trip_and_unknown_ids_are_refused() {
     assert_eq!(Page::parse(""), None);
     let (top, bottom) = entries(false);
     assert_eq!(top, vec![Nav::Page(Page::Home), Nav::Page(Page::New), Nav::Page(Page::Open)], "the start screen has no presentation pages");
-    assert_eq!(bottom, vec![Nav::Page(Page::Account), Nav::Options]);
-    assert_eq!(entries(true).0.len(), 9);
+    assert_eq!(bottom, vec![Nav::Page(Page::Account)]);
+    assert_eq!(entries(true).0.len(), 7, "Home, New, Open, Save, Save As, Export, Close");
     assert_eq!(split_path("/home/me/Talk.pptx"), ("Talk.pptx".into(), "/home/me".into()));
     assert_eq!(format_bytes(512), "512 bytes");
     assert_eq!(format_bytes(33_485), "32.7 KB");
@@ -129,20 +129,20 @@ fn alt_f_arrows_enter_and_esc_drive_the_side_menu() {
     h.run_steps(3);
     assert_eq!(page(&h), Some(Page::Home));
     assert_eq!(h.state().backstage.as_ref().and_then(|b| b.focus), Some(0));
-    for want in [Page::New, Page::Open, Page::Info] {
+    for want in [Page::New, Page::Open] {
         h.key_press(Key::ArrowDown);
         h.run_steps(2);
         assert_eq!(page(&h), Some(want));
     }
-    // Save has the focus now; the page stays Info until it is run.
+    // Save has the focus now; the page stays Open until it is run.
     h.key_press(Key::ArrowDown);
     h.run_steps(2);
-    assert_eq!(page(&h), Some(Page::Info));
+    assert_eq!(page(&h), Some(Page::Open));
     // A presentation that was never saved goes to Save As, as in PowerPoint.
     h.key_press(Key::Enter);
     h.run_steps(2);
     assert_eq!(page(&h), Some(Page::SaveAs));
-    // Up from the top wraps to Options at the bottom.
+    // Up from the top wraps to the bottom.
     for _ in 0..20 {
         h.key_press(Key::ArrowUp);
     }
@@ -166,15 +166,16 @@ fn every_page_renders() {
         (Page::SaveAs, "Not saved yet"),
         (Page::Print, "Print Hidden Slides"),
         (Page::Export, "Create PDF Document"),
-        (Page::Account, "About DeckCraft"),
+        (Page::Account, "About WorkSuite Slides"),
     ];
     for (p, marker) in checks {
         h.state_mut().run("app.backstage", json!({"page": p.id()})).unwrap();
         h.run_steps(3);
         assert_eq!(page(&h), Some(p));
         assert!(h.query_all_by_label_contains(marker).next().is_some(), "{} shows “{marker}”", p.label());
+        // Info and Print open by command only: the Android side menu leaves them out.
         let selected = h.query_all_by_label(p.label()).any(|n| in_nav(n.rect()));
-        assert!(selected, "{} is in the side menu", p.label());
+        assert_eq!(selected, !matches!(p, Page::Info | Page::Print), "{} in the side menu", p.label());
     }
     assert!(h.state_mut().run("app.backstage", json!({"page": "share"})).is_err(), "Share (cloud) isn't offered");
 }

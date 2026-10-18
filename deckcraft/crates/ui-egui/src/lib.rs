@@ -354,6 +354,8 @@ impl UiState {
 
 /// How many recent files File › Open and Home list.
 pub const RECENT_MAX: usize = 12;
+/// The app's name as people see it in the WorkSuite office suite (start screen, title, About).
+pub const APP_NAME: &str = "WorkSuite Slides";
 
 /// UI-only commands (id, label, shortcut, params).
 pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
@@ -392,7 +394,7 @@ pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
         Some("Cmd+P"),
         "{layout?, perPage?, slides?, includeHidden?, frame?, paper?: letter|a4|legal|a3, orientation?: portrait|landscape}",
     ),
-    ("app.about", "About DeckCraft", None, "{}"),
+    ("app.about", "About WorkSuite Slides", None, "{}"),
     ("app.palette", "Command Palette", Some("Cmd+Shift+P"), "{}"),
     ("app.preferences", "Preferences…", Some("Cmd+,"), "{}"),
     ("app.openDialog", "Open…", None, "{purpose?}"),
