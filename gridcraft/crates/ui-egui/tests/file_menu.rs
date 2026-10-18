@@ -115,9 +115,8 @@ fn file_options_opens_the_options_page_and_pages_are_reachable_by_command() {
     assert_eq!(r["calculation"]["mode"], "automatic");
     h.run_steps(3);
     assert_eq!(page(&h), Some("options"));
-    click(&mut h, "Info");
-    assert_eq!(page(&h), Some("info"));
-    for id in ["print", "export", "saveAs", "new", "open", "home"] {
+    // Info isn't in the Android side menu; it opens by command.
+    for id in ["info", "print", "export", "saveAs", "new", "open", "home"] {
         h.state_mut().run("ui.backstage", serde_json::json!({"page": id})).unwrap();
         h.run_steps(2);
         assert_eq!(page(&h), Some(id));

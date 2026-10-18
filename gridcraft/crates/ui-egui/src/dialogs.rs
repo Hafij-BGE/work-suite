@@ -674,7 +674,7 @@ impl Dialog {
             "commandSearch" => Dialog::custom("commandSearch", "Search Commands", json!({})),
             "agents" => Dialog::custom("agents", "Agent Control", json!({})),
             "about" => {
-                let mut d = Dialog::custom("about", "About GridCraft", json!({}));
+                let mut d = Dialog::custom("about", "About WorkSuite Sheets", json!({}));
                 d.tab = match p("tab").as_str() {
                     Some(t @ ("Contributors" | "Models")) => t.to_string(),
                     _ => "About".into(),
@@ -776,7 +776,7 @@ impl Dialog {
             "pickList" => Dialog::custom("pickList", "Pick From List", json!({})),
             "saveCopy" => Dialog::custom("saveCopy", "Save a Copy", json!({"format": p("format")})),
             "saveChanges" => Dialog::custom("saveChanges", "Save Changes?", json!({"title": p("title")})),
-            "start" => Dialog::custom("start", "GridCraft", json!({})),
+            "start" => Dialog::custom("start", crate::APP_NAME, json!({})),
             "comments" => {
                 app.grid.pane = None;
                 app.run_or_alert("review.showComments", json!({"on": true}));
@@ -1483,7 +1483,7 @@ fn about(ui: &mut egui::Ui, d: &mut Dialog) {
         "Contributors" => crate::credits::contributors_ui(ui),
         "Models" => crate::credits::models_ui(ui),
         _ => {
-            ui.heading("GridCraft");
+            ui.heading(crate::APP_NAME);
             ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
             ui.add_space(4.0);
             ui.label("A clean-room, open-source, Rust-native spreadsheet. Part of ArtCraft.");

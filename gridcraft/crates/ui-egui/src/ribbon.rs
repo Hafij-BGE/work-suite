@@ -10,7 +10,9 @@ use crate::keytips::keytip_table;
 use crate::theme::{self, Tokens};
 use crate::widgets::{big_button, color_palette, icon_button, small_button, split_button, toggle_button};
 
-pub const TABS: &[&str] = &["Home", "Insert", "Draw", "Page Layout", "Formulas", "Data", "Review", "View", "Automate"];
+/// The tabs the Android suite keeps: what a spreadsheet needs on a phone or tablet. Draw, Review,
+/// View and Automate are left out (their commands still run from shortcuts and the command search).
+pub const TABS: &[&str] = &["Home", "Insert", "Page Layout", "Formulas", "Data"];
 
 /// macOS draws the window into the title bar (`with_fullsize_content_view`) and AppKit paints the
 /// traffic lights itself, centred in its standard 28 pt title-bar band. Moving them would take
@@ -142,11 +144,6 @@ pub fn title_bar(app: &mut SheetApp, ui: &mut Ui) {
                         }
                     }
                 });
-                let __k = icon_button(ui, Icon::Comment, t.text_dim, "Comments", vec2(28.0, ch));
-                control_keytip(app, ui, &__k, "comments");
-                if __k.clicked() {
-                    app.open_dialog("comments", json!({}));
-                }
                 // Quick light/dark switch (#194); right-click offers System as well. The same
                 // choice lives in File › Display theme and the View tab.
                 let lang = app.ui.language;
@@ -173,53 +170,59 @@ pub fn show(app: &mut SheetApp, ui: &mut Ui) {
             // Tabs row.
             let tabs_rect = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), 32.0));
             ui.scope_builder(egui::UiBuilder::new().max_rect(tabs_rect), |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 2.0;
-                    ui.add_space(8.0);
-                    file_menu(app, ui);
-                    let mut tabs: Vec<&str> = TABS.to_vec();
-                    let ctx_tabs = contextual_tabs(app);
-                    tabs.extend(ctx_tabs.iter());
-                    for tab in tabs {
-                        let active = app.ui.ribbon_tab == tab;
-                        let contextual = ctx_tabs.contains(&tab);
-                        let font = theme::ui_font(13.5);
-                        let label = app.ui.language.tr(tab);
-                        let tw = ui.painter().layout_no_wrap(label.to_string(), font.clone(), t.text).size().x;
-                        let (r, resp) = ui.allocate_exact_size(vec2(tw + 22.0, 30.0), Sense::click());
-                        if resp.hovered() && !active {
-                            ui.painter().rect_filled(r.shrink2(vec2(2.0, 4.0)), 5.0, t.hover);
-                        }
-                        let color = if contextual {
-                            t.accent
-                        } else if active {
-                            t.text
-                        } else {
-                            t.text_dim
-                        };
-                        ui.painter().text(r.center(), Align2::CENTER_CENTER, label, if active { theme::ui_bold(13.5) } else { font }, color);
-                        if active {
-                            let ul = Rect::from_center_size(pos2(r.center().x, r.bottom() - 3.0), vec2(tw.clamp(20.0, 40.0), 3.0));
-                            ui.painter().rect_filled(ul, 1.5, t.accent);
-                        }
-                        if resp.clicked() {
-                            if active && !collapsed {
-                                app.ui.ribbon_collapsed = true;
-                            } else {
-                                app.ui.ribbon_tab = tab.to_string();
-                                app.ui.ribbon_collapsed = false;
+                // Narrower than the tabs (a phone): the row scrolls sideways under a finger.
+                egui::ScrollArea::horizontal().id_salt("tab_row").scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).show(
+                    ui,
+                    |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 2.0;
+                            ui.add_space(8.0);
+                            file_menu(app, ui);
+                            let mut tabs: Vec<&str> = TABS.to_vec();
+                            let ctx_tabs = contextual_tabs(app);
+                            tabs.extend(ctx_tabs.iter());
+                            for tab in tabs {
+                                let active = app.ui.ribbon_tab == tab;
+                                let contextual = ctx_tabs.contains(&tab);
+                                let font = theme::ui_font(13.5);
+                                let label = app.ui.language.tr(tab);
+                                let tw = ui.painter().layout_no_wrap(label.to_string(), font.clone(), t.text).size().x;
+                                let (r, resp) = ui.allocate_exact_size(vec2(tw + 22.0, 30.0), Sense::click());
+                                if resp.hovered() && !active {
+                                    ui.painter().rect_filled(r.shrink2(vec2(2.0, 4.0)), 5.0, t.hover);
+                                }
+                                let color = if contextual {
+                                    t.accent
+                                } else if active {
+                                    t.text
+                                } else {
+                                    t.text_dim
+                                };
+                                ui.painter().text(r.center(), Align2::CENTER_CENTER, label, if active { theme::ui_bold(13.5) } else { font }, color);
+                                if active {
+                                    let ul = Rect::from_center_size(pos2(r.center().x, r.bottom() - 3.0), vec2(tw.clamp(20.0, 40.0), 3.0));
+                                    ui.painter().rect_filled(ul, 1.5, t.accent);
+                                }
+                                if resp.clicked() {
+                                    if active && !collapsed {
+                                        app.ui.ribbon_collapsed = true;
+                                    } else {
+                                        app.ui.ribbon_tab = tab.to_string();
+                                        app.ui.ribbon_collapsed = false;
+                                    }
+                                }
+                                if resp.double_clicked() {
+                                    app.ui.ribbon_collapsed = !collapsed;
+                                }
+                                if app.keytips.prefix() == Some("")
+                                    && let Some(sequence) = keytip_table::tab_sequence(tab)
+                                {
+                                    keytip(app, ui, sequence, pos2(r.center().x, r.bottom() - 1.0));
+                                }
                             }
-                        }
-                        if resp.double_clicked() {
-                            app.ui.ribbon_collapsed = !collapsed;
-                        }
-                        if app.keytips.prefix() == Some("")
-                            && let Some(sequence) = keytip_table::tab_sequence(tab)
-                        {
-                            keytip(app, ui, sequence, pos2(r.center().x, r.bottom() - 1.0));
-                        }
-                    }
-                });
+                        })
+                    },
+                );
             });
             if collapsed {
                 return;
@@ -1439,7 +1442,7 @@ fn insert(app: &mut SheetApp, ui: &mut Ui) {
             // in dialogs.rs) — otherwise the prior cell/range selection is left in place, and
             // Del right after inserting deletes the source data instead of the chart.
             Ok(r) => app.selected_chart = r.get("chart").and_then(serde_json::Value::as_u64).and_then(|id| u32::try_from(id).ok()),
-            Err(e) => app.message = Some(("GridCraft".into(), crate::clean_error(&e))),
+            Err(e) => app.message = Some((crate::APP_NAME.into(), crate::clean_error(&e))),
         }
     }
     ui.vertical(|ui| {
