@@ -135,6 +135,10 @@ pub struct Services {
     /// Desktop: the picture on the system clipboard, if any — egui's paste only carries text
     /// (#45). Read when Paste finds no text; see [`paste_picture`].
     pub clipboard_picture: Option<Box<dyn Fn() -> Option<paste_picture::ClipboardPicture>>>,
+    /// Where a recent document is, as File › Home and Open describe it under its name. Without
+    /// the hook, its folder. (Android: the editor's copy of a picked document lives in the app's
+    /// private folder, whose path means nothing to the user.)
+    pub location_label: Option<Box<dyn Fn(&str) -> String>>,
     /// Whether the system has animation effects on (Windows: Animation effects; macOS: Reduce
     /// motion; Linux and the BSDs: the desktop's setting; browsers: `prefers-reduced-motion`), or
     /// `None` when it doesn't say. What "Use system setting" follows ([`theme::Animations`]).

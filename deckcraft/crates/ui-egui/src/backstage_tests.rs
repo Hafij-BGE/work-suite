@@ -562,3 +562,23 @@ fn print_slides_follow_the_settings() {
     bs.print_layout = "slides";
     assert_eq!(print_page_size(&bs, &doc), (doc.slide_size.width as f32, doc.slide_size.height as f32), "slides print slide-shaped");
 }
+
+/// A phone or small tablet in portrait: the Home page's tiles wrap inside the window instead of
+/// running off its right edge (`set_max_width` widened the page to its desktop width).
+#[test]
+fn home_tiles_wrap_on_a_narrow_window() {
+    let mut h = Harness::builder().with_size(egui::vec2(714.0, 1140.0)).build_ui_state(
+        |ui, app: &mut SlideApp| {
+            app.logic(ui.ctx());
+            app.ui(ui);
+        },
+        new_app(),
+    );
+    h.run_steps(3);
+    h.state_mut().open_backstage(Page::Home);
+    h.run_steps(4);
+    for label in ["Blank Presentation", "Harbor", "Pitch", "Briefing"] {
+        let r = h.get_by_role_and_label(Role::Button, label).rect();
+        assert!(r.right() <= 714.0, "{label} ends at {} past the window", r.right());
+    }
+}

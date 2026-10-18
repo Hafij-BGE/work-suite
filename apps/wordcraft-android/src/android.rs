@@ -16,7 +16,7 @@ use std::rc::Rc;
 use winit::platform::android::activity::AndroidApp;
 
 use crate::saf::Saf;
-use crate::suite::{Files, Picker, SUITE_NAME, Suite};
+use crate::suite::{Files, Picker, SUITE_NAME, Suite, SuitePaths};
 
 /// Shared storage's Documents folder (the same path on every current Android device).
 const SHARED_DOCUMENTS: &str = "/storage/emulated/0/Documents";
@@ -41,10 +41,13 @@ fn android_main(app: AndroidApp) {
             let files = saf.clone().map(|s| s as Rc<dyn Files>);
             let suite = Suite::new(
                 Picker::new(files),
-                folders.settings.as_ref().map(|d| d.join("ui.json")),
-                folders.settings.as_ref().map(|d| d.join("recovery")),
+                SuitePaths {
+                    writer_prefs: folders.settings.as_ref().map(|d| d.join("ui.json")),
+                    recovery: folders.settings.as_ref().map(|d| d.join("recovery")),
+                    copies: folders.copies.clone(),
+                },
             );
-            Ok(Box::new(App { suite, android: app, saf, synced_at: 0.0 }))
+            Ok(Box::new(App { suite, android: app, saf, synced_at: 0.0, light_bars: None }))
         }),
     );
     if let Err(e) = result {
@@ -67,6 +70,8 @@ struct App {
     saf: Option<Rc<Saf>>,
     /// When saved documents were last copied back (input time, seconds).
     synced_at: f64,
+    /// Whether the system bars' icons were last set dark (over a light app).
+    light_bars: Option<bool>,
 }
 
 impl App {
@@ -107,12 +112,29 @@ impl eframe::App for App {
         self.files(ctx);
     }
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
-        if let Some(wait) = self.suite.raw_input(raw) {
+        self.suite.set_insets(self.saf.as_ref().and_then(|s| s.insets()));
+        if let Some(wait) = self.suite.raw_input(ctx, raw) {
             ctx.request_repaint_after_secs(wait as f32);
+        }
+        if self.suite.take_leave()
+            && let Some(saf) = &self.saf
+        {
+            saf.move_to_back();
         }
     }
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.suite.ui(ui);
+        let light = !self.suite.chrome_dark;
+        if self.light_bars != Some(light)
+            && let Some(saf) = &self.saf
+        {
+            saf.set_light_bars(light);
+            self.light_bars = Some(light);
+        }
+    }
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        // Behind the system bars until the first frame paints them.
+        self.suite.chrome.to_normalized_gamma_f32()
     }
     fn on_exit(&mut self) {
         if let Some(w) = &self.suite.writer {
@@ -128,6 +150,8 @@ struct Folders {
     documents: Option<PathBuf>,
     /// Temporary files.
     cache: Option<PathBuf>,
+    /// The editors' copies of documents picked in Android's file picker (made by `WriterActivity`).
+    copies: Option<PathBuf>,
 }
 
 impl Folders {
@@ -137,8 +161,9 @@ impl Folders {
         let shared = PathBuf::from(SHARED_DOCUMENTS).join("WorkSuite");
         let documents = if made(&shared) { Some(shared) } else { app.external_data_path().filter(|d| made(d)) };
         let cache = internal.as_ref().map(|d| d.join("cache")).filter(|d| made(d));
+        let copies = internal.as_ref().map(|d| d.join("documents"));
         log::info!("folders: settings {settings:?}, documents {documents:?}");
-        Folders { settings, documents, cache }
+        Folders { settings, documents, cache, copies }
     }
 
     /// Hand the folders to the rest of the app, which finds them the way it does on Linux:

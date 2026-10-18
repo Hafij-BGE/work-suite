@@ -1,9 +1,26 @@
-WorkSuite, a free, open-source office suite for Android: **Writer**, **Slides** and **Sheets** in
+WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Android: **Writer**, **Slides** and **Sheets** in
 one app, based on [WordCraft](https://github.com/storytold/wordcraft),
 [DeckCraft](https://github.com/storytold/deckcraft) and
 [GridCraft](https://github.com/storytold/gridcraft).
 
 **Preview:** expect rough edges, and please report what you find in an issue.
+
+## New in 0.9.1
+
+- **A file you open shows at once.** Opening from the home screen (or "Open with") no longer leaves
+  Writer on its start page, and a document opened again keeps its one copy (no duplicates under
+  Recent, which now says "From your files" instead of the app's internal folder).
+- **Back works everywhere:** it closes a menu, dialog or the File view first, then returns to the
+  WorkSuite home screen; on the home screen it puts the app in the background.
+- **No more overlap with the status bar:** the app draws edge to edge and keeps its controls clear
+  of the status bar, navigation bar, camera cut-out and keyboard; the bars' icons follow the app's
+  light or dark look.
+- **Start pages fit the screen:** template and theme tiles in Writer, Slides and Sheets wrap on
+  phones and tablets instead of running off the right edge.
+- **A redesigned home screen and app switcher.**
+- **Fully offline:** the app has no network permission, the file picker shows only files on this
+  device, and the online community link is gone from the Slides start page.
+- Made by Md Hafijur Rahman.
 
 ## New in 0.9.0
 
@@ -18,7 +35,7 @@ one app, based on [WordCraft](https://github.com/storytold/wordcraft),
 
 ## Install
 
-1. Download `WorkSuite-0.9.0-android-release.apk` below, on your phone.
+1. Download `WorkSuite-0.9.1-android-release.apk` below, on your phone.
 2. Open it, and allow installing from that app when Android asks.
 
 If an earlier preview (WordCraft or WorkSuite Writer) is installed, uninstall it first: each

@@ -398,8 +398,15 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
         w.hovered.bg_stroke = Stroke::new(1.0, t.accent);
         w.active.bg_stroke = Stroke::new(1.0, t.accent);
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-            egui::Frame::NONE.inner_margin(egui::Margin { left: 48, right: 36, top: 22, bottom: 32 }).show(ui, |ui| {
-                ui.set_max_width(CONTENT_W);
+            // A narrow window (a phone or tablet in portrait) keeps the page's margins small.
+            let margin = if ui.available_width() < 640.0 {
+                egui::Margin { left: 18, right: 14, top: 18, bottom: 32 }
+            } else {
+                egui::Margin { left: 48, right: 36, top: 22, bottom: 32 }
+            };
+            egui::Frame::NONE.inner_margin(margin).show(ui, |ui| {
+                // `set_max_width` sets the width: cap it at the window's, or the page runs off its edge.
+                ui.set_max_width(ui.available_width().min(CONTENT_W));
                 if bs.page != Page::Home {
                     ui.label(RichText::new(bs.page.label()).font(theme::bold(22.0)).color(t.text));
                     ui.add_space(16.0);
@@ -481,7 +488,8 @@ fn dim(ui: &mut Ui, text: &str) {
 /// A link with an arrow (More themes →): true when clicked.
 fn arrow_link(ui: &mut Ui, text: &str) -> bool {
     let t = Tokens::get(ui.ctx());
-    ui.add(egui::Label::new(RichText::new(format!("{text}  →")).font(theme::font(12.5)).color(t.accent)).sense(Sense::click()))
+    // No arrow: the interface font may lack "→" (without the optional font pack it shows a box).
+    ui.add(egui::Label::new(RichText::new(text).font(theme::font(12.5)).color(t.accent)).sense(Sense::click()))
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .clicked()
 }
@@ -739,8 +747,10 @@ fn home(app: &mut SlideApp, ui: &mut Ui, bs: &mut Backstage, out: &mut Outcome) 
             }
         });
     }
-    ui.add_space(30.0);
-    ui.hyperlink_to("Join the ArtCraft community on Discord", deckcraft_engine::links::DISCORD);
+    if app.community_link {
+        ui.add_space(30.0);
+        ui.hyperlink_to("Join the ArtCraft community on Discord", deckcraft_engine::links::DISCORD);
+    }
 }
 
 /// New: a blank presentation, then every theme and starter template, with a search box.
@@ -1264,7 +1274,7 @@ fn export(app: &mut SlideApp, ui: &mut Ui, bs: &mut Backstage) {
         ui.painter().line_segment([r.center_top(), r.center_bottom()], Stroke::new(1.0, t.separator));
         ui.add_space(24.0);
         ui.vertical(|ui| {
-            ui.set_max_width(560.0);
+            ui.set_max_width(ui.available_width().min(560.0));
             match bs.export {
                 ExportTask::Pdf => {
                     ui.label(RichText::new("Create a PDF Document").font(theme::font(16.0)).color(t.text));

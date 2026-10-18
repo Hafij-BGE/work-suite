@@ -4,7 +4,7 @@
 //!
 //! Every call is a quick JNI call on the app's thread; the picker answers later, polled each frame.
 
-use jni::objects::{GlobalRef, JObject, JString, JValue};
+use jni::objects::{GlobalRef, JIntArray, JObject, JString, JValue};
 use jni::{JNIEnv, JavaVM};
 use winit::platform::android::activity::AndroidApp;
 
@@ -54,7 +54,28 @@ impl Saf {
 
     /// Copy documents saved since the last call back to where they came from (in the background).
     pub fn sync_back(&self) {
-        self.call("syncBack", |env, activity| env.call_method(activity, "syncBack", "()V", &[]).map(|_| None));
+        self.call("syncBack", |env, activity| env.call_method(activity, "syncBack", "()V", &[]).map(|_| Some(())));
+    }
+
+    /// What covers the window's edges (system bars, a display cutout, the on-screen keyboard), in
+    /// pixels: left, top, right, bottom, then the window's width and height.
+    pub fn insets(&self) -> Option<[i32; 6]> {
+        self.call("insets", |env, activity| {
+            let array = JIntArray::from(env.call_method(activity, "insets", "()[I", &[])?.l()?);
+            let mut out = [0; 6];
+            env.get_int_array_region(&array, 0, &mut out)?;
+            Ok(Some(out))
+        })
+    }
+
+    /// Dark status and navigation bar icons (over a light app) when `light`, else light ones.
+    pub fn set_light_bars(&self, light: bool) {
+        self.call("setLightBars", |env, activity| env.call_method(activity, "setLightBars", "(Z)V", &[JValue::Bool(light.into())]).map(|_| Some(())));
+    }
+
+    /// Send the app to the background, as the Home button does.
+    pub fn move_to_back(&self) {
+        self.call("moveToBack", |env, activity| env.call_method(activity, "moveToBack", "()V", &[]).map(|_| Some(())));
     }
 
     fn call_with_string(&self, method: &str, arg: &str) -> bool {
@@ -79,7 +100,7 @@ impl Saf {
     /// Run `f` inside a JNI local frame: this thread stays attached and never returns to Java, so
     /// local references would otherwise pile up until the VM aborts. Errors are logged and the
     /// pending Java exception cleared.
-    fn call(&self, what: &str, f: impl FnOnce(&mut JNIEnv, &JObject) -> jni::errors::Result<Option<String>>) -> Option<String> {
+    fn call<T>(&self, what: &str, f: impl FnOnce(&mut JNIEnv, &JObject) -> jni::errors::Result<Option<T>>) -> Option<T> {
         let mut env = self.vm.attach_current_thread_permanently().map_err(|e| log::warn!("JNI attach: {e}")).ok()?;
         let activity = self.activity.as_obj();
         match env.with_local_frame(8, |env| f(env, activity)) {

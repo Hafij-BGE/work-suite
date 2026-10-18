@@ -244,9 +244,13 @@ fn heading(ui: &mut Ui, s: &str) {
 
 fn template_tile(ui: &mut Ui, app: &mut WordApp, label: &str, template: &str) {
     let t = Tokens::get(ui.ctx());
-    ui.vertical(|ui| {
+    // Allocated at its size up front, so a wrapping gallery row moves it to the next line when
+    // it doesn't fit (a plain `vertical` child is placed before its size is known, and never wraps).
+    ui.allocate_ui_with_layout(vec2(150.0, 228.0), egui::Layout::top_down(egui::Align::Min), |ui| {
         // The label sits right under the thumbnail whatever row gap the gallery uses.
         ui.spacing_mut().item_spacing.y = 0.0;
+        // As wide as the thumbnail: a long caption wraps instead of widening the gallery's row.
+        ui.set_width(150.0);
         let (r, resp) = ui.allocate_exact_size(vec2(150.0, 194.0), Sense::click());
         ui.painter().rect(
             r,
@@ -279,7 +283,8 @@ fn template_tile(ui: &mut Ui, app: &mut WordApp, label: &str, template: &str) {
             ui.painter().image(h.id(), r.shrink(1.0), Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), egui::Color32::WHITE);
         }
         // The caption opens the template too, as in Word.
-        let caption = ui.add(egui::Label::new(egui::RichText::new(crate::i18n::tc("template", label)).font(regular(12.5))).sense(Sense::click()));
+        let caption =
+            ui.add(egui::Label::new(egui::RichText::new(crate::i18n::tc("template", label)).font(regular(12.5))).wrap().sense(Sense::click()));
         if resp.clicked() || caption.clicked() {
             let _ = app.run("file.new", json!({"template": template}));
             app.ui.backstage = false;
@@ -321,8 +326,9 @@ fn home_page(app: &mut WordApp, ui: &mut Ui) {
             "Good evening"
         },
     );
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing = vec2(18.0, 0.0);
+    // Wrapped: a phone or a tablet in portrait has no room for the whole row.
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing = vec2(18.0, 18.0);
         for (label, template) in TEMPLATES.into_iter().take(HOME_TEMPLATES) {
             template_tile(ui, app, label, template);
         }
@@ -369,13 +375,24 @@ fn open_list(app: &mut WordApp, ui: &mut Ui) {
     }
     for p in app.ui.recent.iter().take(app.ui.recent_shown()).cloned().collect::<Vec<_>>() {
         let name = std::path::Path::new(&p).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or(p.clone());
+        let location = match &app.services.location_label {
+            Some(label) => label(&p),
+            None => std::path::Path::new(&p).parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_default(),
+        };
         let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width().min(700.0), 40.0), Sense::click());
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name));
         if resp.hovered() {
             ui.painter().rect_filled(r, 4.0, t.hover);
         }
         icons::paint(ui.painter(), Rect::from_center_size(pos2(r.min.x + 18.0, r.center().y), vec2(22.0, 22.0)), "printLayout", t.icon, t.accent);
-        ui.painter().text(pos2(r.min.x + 40.0, r.min.y + 13.0), Align2::LEFT_CENTER, &name, medium(13.0), t.text);
-        ui.painter().text(pos2(r.min.x + 40.0, r.min.y + 29.0), Align2::LEFT_CENTER, &p, regular(11.0), t.text_dim);
+        // One line each, cut with "…" where the row ends.
+        let width = (r.width() - 46.0).max(20.0);
+        for (text, font, color, y) in [(&name, medium(13.0), t.text, 13.0), (&location, regular(11.0), t.text_dim, 29.0)] {
+            let mut job = egui::text::LayoutJob::simple_singleline(text.clone(), font, color);
+            job.wrap = egui::text::TextWrapping::truncate_at_width(width);
+            let galley = ui.painter().layout_job(job);
+            ui.painter().galley(pos2(r.min.x + 40.0, r.min.y + y - galley.size().y / 2.0), galley, color);
+        }
         if resp.clicked() {
             let _ = app.run("file.open", json!({"path": p}));
             app.ui.backstage = false;
@@ -669,6 +686,31 @@ mod tests {
 
     /// Home and New are different pages (#141): Home has the short template row, the link to New
     /// and Recent; New has every template and no Recent list.
+    #[test]
+    fn home_fits_a_narrow_window_and_names_recent_places() {
+        let mut a = WordApp::new(
+            wordcraft_engine::Session::new(wordcraft_doc::Document::new()),
+            Services { location_label: Some(Box::new(|_: &str| "From your files".to_string())), ..Default::default() },
+        );
+        a.ui.recent = vec!["/data/user/0/app/files/documents/1391877447363541/A rather long file name for a phone screen.docx".into()];
+        a.run("ui.backstage", json!({"value": true, "page": "home"})).unwrap();
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(714.0, 1140.0)).build_ui_state(
+            |ui, app: &mut WordApp| {
+                let ctx = ui.ctx().clone();
+                app.logic(&ctx);
+                app.ui(ui);
+            },
+            a,
+        );
+        h.run_steps(4);
+        for label in ["Blank document", "Letter"] {
+            let r = h.get_by_label(label).rect();
+            assert!(r.right() <= 714.0, "{label} ends at {} past the window", r.right());
+        }
+        let row = h.get_by_label("A rather long file name for a phone screen.docx").rect();
+        assert!(row.right() <= 714.0, "the recent row fits: {row:?}");
+    }
+
     #[test]
     fn home_and_new_show_different_sections() {
         let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Services::default());

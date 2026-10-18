@@ -477,6 +477,8 @@ pub struct SlideApp {
     /// slides and status bar until Esc or Back; with nothing open it is the start screen. Opening,
     /// creating or closing a presentation leaves it.
     pub backstage: Option<backstage::Backstage>,
+    /// The start screen invites to the community's Discord (off in an offline build).
+    pub community_link: bool,
     pending_urls: Vec<String>,
     /// Text for the system clipboard from a Copy or Cut command, handed over on the next frame.
     pending_copy: Option<String>,
@@ -561,6 +563,7 @@ impl SlideApp {
             palette: None,
             integrated_titlebar: false,
             backstage: None,
+            community_link: true,
             pending_urls: vec![],
             pending_copy: None,
             shot_token: 0,

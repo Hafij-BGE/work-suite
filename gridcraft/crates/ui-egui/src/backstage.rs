@@ -197,8 +197,15 @@ pub fn show(app: &mut SheetApp, ui: &mut Ui) {
         });
     egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.ribbon)).show(ui, |ui| {
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-            egui::Frame::NONE.inner_margin(egui::Margin { left: 44, right: 32, top: 26, bottom: 32 }).show(ui, |ui| {
-                ui.set_max_width(CONTENT_W);
+            // A narrow window (a phone or tablet in portrait) keeps the page's margins small.
+            let margin = if ui.available_width() < 640.0 {
+                egui::Margin { left: 18, right: 14, top: 18, bottom: 32 }
+            } else {
+                egui::Margin { left: 44, right: 32, top: 26, bottom: 32 }
+            };
+            egui::Frame::NONE.inner_margin(margin).show(ui, |ui| {
+                // `set_max_width` sets the width: cap it at the window's, or the page runs off its edge.
+                ui.set_max_width(ui.available_width().min(CONTENT_W));
                 ui.label(RichText::new(lang.tr(bs.page.label())).font(theme::ui_font(28.0)).color(t.text));
                 ui.add_space(18.0);
                 match bs.page {

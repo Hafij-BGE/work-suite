@@ -7,6 +7,17 @@ is `apps/wordcraft-android` (`suite.rs`) in a `NativeActivity`; a small Java act
 (`app/src/main/java/…/WriterActivity.java`) adds what only Java can reach: Android's file picker and
 "Open with". The icon is drawn as Android vector drawables (`app/src/main/res`).
 
+Made by Md Hafijur Rahman. The app works offline: it asks for no network permission, and its file
+picker shows only files on the device.
+
+Back closes what is open (a menu, a dialog, the File view over a document, a slide show), then goes
+to the home screen, then puts the app in the background. The app draws edge to edge and keeps its
+controls clear of the system bars and the keyboard (insets from `WriterActivity.insets()`, applied
+as egui's safe area).
+
+To look at the suite without a phone: `cargo run -p wordcraft-android --example suite_shot --
+out.ppm [home|writer|slides|sheets] [dark|light] [width height scale]` (a software renderer).
+
 DeckCraft and GridCraft keep their own Cargo workspaces (the root workspace excludes them); the
 Android crate depends on their UI crates by path.
 

@@ -216,3 +216,27 @@ fn a_cancelled_export_pdf_picker_writes_nothing() {
     assert!(h.state().message.is_none());
     assert!(h.state_mut().session.take_ui_requests().is_empty());
 }
+
+/// A phone or small tablet in portrait: the Home page's tiles wrap inside the window instead of
+/// running off its right edge (`set_max_width` widened the page to its desktop width).
+#[test]
+fn home_tiles_wrap_on_a_narrow_window() {
+    let mut session = Session::new();
+    session.new_workbook();
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(714.0, 1140.0)).build_ui_state(
+        |ui, app: &mut SheetApp| {
+            let ctx = ui.ctx().clone();
+            app.logic(&ctx);
+            app.ui(ui);
+        },
+        SheetApp::new(session, Services::default()),
+    );
+    h.run_steps(4);
+    h.get_by_label("File").click();
+    h.run_steps(4);
+    let tiles: Vec<egui::Rect> = h.get_all_by_role(egui::accesskit::Role::Button).map(|n| n.rect()).collect();
+    assert!(!tiles.is_empty());
+    for r in tiles {
+        assert!(r.right() <= 714.5, "a button ends at {} past the window", r.right());
+    }
+}
