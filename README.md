@@ -9,6 +9,15 @@
 
 <h1 align="center">WordCraft</h1>
 
+> [!IMPORTANT]
+> **This copy is WordCraft adapted for Android** (phones and tablets), based on
+> [storytold/wordcraft](https://github.com/storytold/wordcraft). It keeps a lighter ribbon (File,
+> Home, Insert, Design, Layout), a shorter File menu, and adds touch gestures (drag to scroll,
+> long press for the menu, pinch to zoom). The app is in [`apps/wordcraft-android`](apps/wordcraft-android);
+> how to build and install the APK, and what is different on Android, is in
+> [`packaging/android/README.md`](packaging/android/README.md). The rest of this README describes
+> upstream WordCraft.
+
 <p align="center">
   <b>Writing and document design; an open-source, clean-room reimplementation of Microsoft Word, rebuilt in pure Rust.</b>
 </p>

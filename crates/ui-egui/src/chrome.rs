@@ -342,12 +342,13 @@ pub fn title_bar(app: &mut WordApp, ui: &mut Ui) {
                         }
                         ui.add_space(8.0);
                     }
-                    // Search ("Tell me").
-                    let (r, resp) = ui.allocate_exact_size(vec2(260.0, control_h), Sense::click());
+                    // Search ("Tell me"). On a narrow screen (a phone) it shrinks, down to its icon.
+                    let search_w = (full.width() - 420.0).clamp(control_h + 4.0, 260.0);
+                    let (r, resp) = ui.allocate_exact_size(vec2(search_w, control_h), Sense::click());
                     ui.painter().rect(r, 6.0, if resp.hovered() { t.input } else { t.ribbon }, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
                     icons::paint(
                         ui.painter(),
-                        Rect::from_center_size(pos2(r.min.x + 16.0, r.center().y), vec2(16.0, 16.0)),
+                        Rect::from_center_size(pos2(if search_w >= 120.0 { r.min.x + 16.0 } else { r.center().x }, r.center().y), vec2(16.0, 16.0)),
                         "search",
                         t.text_dim,
                         t.accent,
@@ -355,15 +356,18 @@ pub fn title_bar(app: &mut WordApp, ui: &mut Ui) {
                     let ph = tl!("Search commands and help");
                     let pfont = TypeRung::Control.regular();
                     let ptrack = TypeRung::Control.tracking();
-                    paint_text(
-                        ui.painter(),
-                        pos2(r.min.x + 30.0, r.center().y - TypeRung::Control.line_height() / 2.0),
-                        Align2::LEFT_TOP,
-                        ph,
-                        &pfont,
-                        ptrack,
-                        t.text_dim,
-                    );
+                    if search_w >= 120.0 {
+                        let clip = ui.painter().with_clip_rect(r.shrink(2.0));
+                        paint_text(
+                            &clip,
+                            pos2(r.min.x + 30.0, r.center().y - TypeRung::Control.line_height() / 2.0),
+                            Align2::LEFT_TOP,
+                            ph,
+                            &pfont,
+                            ptrack,
+                            t.text_dim,
+                        );
+                    }
                     if app.ui.keytips == crate::keytips::Phase::Tabs {
                         app.keytip_rects.push((r, crate::keytips::SEARCH_LETTER.to_string()));
                     }

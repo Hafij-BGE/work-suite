@@ -5,11 +5,11 @@ use serde_json::{Value, json};
 
 use crate::colors::{Remember, Target};
 use crate::options::MeasureExt;
-use crate::theme::{Tokens, medium, regular, semibold};
-use crate::widgets::{CONTENT_H, LABEL_H, big, big_toggle, group, menu_button, small, split};
+use crate::theme::{Tokens, medium, semibold};
+use crate::widgets::{CONTENT_H, LABEL_H, big, group, menu_button, small, split};
 use crate::{WordApp, icons};
 
-pub const TABS: [&str; 13] = wordcraft_engine::ribbon::TABS;
+pub const TABS: [&str; 5] = wordcraft_engine::ribbon::TABS;
 
 /// True when the caret/selection touches a picture (#147).
 pub fn has_picture_selected(s: &wordcraft_engine::Session) -> bool {
@@ -302,21 +302,17 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
         .show(ui, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.spacing_mut().item_spacing = vec2(2.0, 0.0);
-                // Share, Editing mode and Comments keep their room; the tabs get what is left of it
-                // (#897, #2026), and the buttons give up their labels before a tab is drawn over them.
+                // Share keeps its room; the tabs get what is left of it (#897, #2026), and the button
+                // gives up its label before a tab is drawn over it. The Editing mode and Comments
+                // buttons belong to the Review tab, which the Android build leaves out.
                 let share = tl!("Share");
-                let editing_label = if app.session.doc.settings.track_changes { tl!("Reviewing") } else { tl!("Editing") };
-                let comments = tl!("Comments");
                 let share_w = ui.ctx().fonts_mut(|f| f.layout_no_wrap(share.to_string(), medium(12.0), t.text).size().x);
                 let spaced = |w: f32| w + 2.0;
                 let button_widths = |level: usize| -> f32 {
-                    let labels = level == 0;
                     let share_full = (share_w + 36.0).max(74.0);
                     let share_button = if level < 2 { share_full } else { 30.0 };
-                    let editing = crate::widgets::icon_text_button_width(ui, editing_label, regular(12.0), true, labels);
-                    let comment = crate::widgets::icon_text_button_width(ui, comments, regular(12.0), false, labels);
-                    // The gaps (6 + 4 + 8) and the strip's margin.
-                    spaced(share_button) + spaced(editing) + spaced(comment) + 18.0 + 12.0
+                    // The gap (8) and the strip's margin.
+                    spaced(share_button) + 8.0 + 12.0
                 };
                 let button_levels = [button_widths(0), button_widths(1), button_widths(2)];
                 let labels: Vec<&str> = tabs.iter().map(|(tab, custom)| if *custom { tab.as_str() } else { tl!(tab) }).collect();
@@ -353,32 +349,6 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, share));
                     if resp.on_hover_text(tl!("Export a copy to share (PDF, Word document)")).clicked() {
                         let _ = app.run("ui.backstage", json!({"value": true, "page": "export"}));
-                    }
-                    ui.add_space(6.0);
-                    let track = app.session.doc.settings.track_changes;
-                    let mode = if plan.buttons == 0 {
-                        crate::widgets::icon_text_menu_button(ui, "pencil", editing_label, regular(12.0))
-                    } else {
-                        crate::widgets::icon_only_button(ui, "pencil", editing_label, regular(12.0), true)
-                    };
-                    egui::Popup::menu(&mode).show(|ui| {
-                        if ui.selectable_label(!track, tl!(tl!("Editing — edit the document directly"))).clicked() {
-                            let _ = app.run("review.trackChanges", json!({"value": false}));
-                            ui.close();
-                        }
-                        if ui.selectable_label(track, tl!(tl!("Reviewing — edits become suggestions"))).clicked() {
-                            let _ = app.run("review.trackChanges", json!({"value": true}));
-                            ui.close();
-                        }
-                    });
-                    ui.add_space(4.0);
-                    let comments_button = if plan.buttons == 0 {
-                        crate::widgets::icon_text_button(ui, "comment", comments, regular(12.0))
-                    } else {
-                        crate::widgets::icon_only_button(ui, "comment", comments, regular(12.0), false)
-                    };
-                    if comments_button.clicked() {
-                        let _ = app.run("view.commentsPane", json!({}));
                     }
                     ui.add_space(8.0);
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
@@ -480,8 +450,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
         .show(ui, |ui| {
             // Right-click on the ribbon (outside a button): Customize Ribbon. Registered first, so
             // the buttons drawn over it keep their own clicks.
-            // No document open (#1129): every command is greyed out but Help's.
-            if !app.has_document() && app.ui.tab != "Help" {
+            // No document open (#1129): every command is greyed out.
+            if !app.has_document() {
                 ui.disable();
             }
             let bg = ui.interact(ui.max_rect(), ui.id().with("ribbon_background"), Sense::click());
@@ -500,16 +470,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                     match app.ui.tab.as_str() {
                         "Home" => home(app, ui),
                         "Insert" => insert(app, ui),
-                        "Draw" => draw(app, ui),
                         "Design" => design(app, ui),
                         "Layout" => layout(app, ui),
-                        "References" => references(app, ui),
-                        "Mailings" => mailings(app, ui),
-                        "Review" => review(app, ui),
-                        "View" => view(app, ui),
-                        "Developer" => developer(app, ui),
-                        "Zotero" => zotero(app, ui),
-                        "Help" => help(app, ui),
                         "Table Design" => table_design(app, ui),
                         "Table Layout" => table_layout(app, ui),
                         "Equation" if app.session.math.is_some() => crate::equation_tab::show(app, ui),
@@ -1384,128 +1346,6 @@ fn drop_cap_items(ui: &mut Ui, app: &mut WordApp) {
     mi(ui, app, "Drop Cap Options…", "ui.dialog", json!({"name": "dropCap"}));
 }
 
-fn draw(app: &mut WordApp, ui: &mut Ui) {
-    use wordcraft_doc::freeform::InkTool;
-    use wordcraft_engine::cmd::draw::{DrawMode, lasso_selection};
-    let mode = app.session.view.draw.mode;
-    // The pen the colour and thickness menus change: the one in use, else the pen.
-    let tool = mode.pen().unwrap_or(InkTool::Pen);
-    let set = app.session.view.draw.settings(tool);
-    // The gallery pen in use, if any: changing the colour or thickness changes it too.
-    let custom =
-        app.session.view.draw.pens.iter().position(|p| mode == DrawMode::Pen(p.kind) && p.color == set.color && (p.width - set.width).abs() < 0.01);
-    let lasso_on = lasso_selection(&app.session).is_some();
-    group(ui, "Drawing Tools", None, app, |ui, app| {
-        big_toggle(ui, app, "select", "Select", "draw.select", mode == DrawMode::Select);
-        big_toggle(ui, app, "lasso", "Lasso", "draw.lasso", mode == DrawMode::Lasso);
-        big_toggle(ui, app, "eraser", "Eraser", "draw.eraser", mode == DrawMode::Eraser);
-        big_toggle(ui, app, "pen", "Pen", "draw.pen", mode == DrawMode::Pen(InkTool::Pen) && custom.is_none());
-        big_toggle(ui, app, "pencil", "Pencil", "draw.pencil", mode == DrawMode::Pen(InkTool::Pencil) && custom.is_none());
-        big_toggle(ui, app, "highlight", "Highlighter", "draw.highlighter", mode == DrawMode::Pen(InkTool::Highlighter) && custom.is_none());
-        // Pens added with Add Pen; right-click one to remove it.
-        let pens = app.session.view.draw.pens.clone();
-        for (i, pen) in pens.iter().enumerate() {
-            gallery_pen(ui, app, i, *pen, custom == Some(i));
-        }
-        menu_button(ui, app, "addPen", Some("Add\nPen"), "Add Pen", true, "", |ui, app| {
-            for (label, kind) in [("Pen", InkTool::Pen), ("Pencil", InkTool::Pencil), ("Highlighter", InkTool::Highlighter)] {
-                // A new pen starts as that kind's current colour and thickness.
-                let cur = app.session.view.draw.settings(kind);
-                mi(ui, app, label, "draw.addPen", json!({"kind": kind.name(), "color": cur.color.hex(), "width": cur.width}));
-            }
-        });
-        stack(ui, |ui| {
-            let sw = Some(crate::theme::c32(set.color));
-            split(ui, app, "fontcolor", "Color", pen_command(tool), json!({}), false, sw, |ui, app| {
-                let theme = app.session.doc.settings.theme_colors.clone();
-                // With ink lasso-selected the colour goes to the selection, else to the pen.
-                let cmd = if lasso_on { "draw.lassoColor" } else { pen_command(tool) };
-                crate::colors::menu(ui, app, &theme, Target::cmd(cmd));
-                if !lasso_on {
-                    update_gallery_pen(app, custom, tool);
-                }
-            });
-            menu_button(ui, app, "thickness", None, "Thickness", false, "draw.pen", |ui, app| {
-                let widths: &[f32] = if tool == InkTool::Highlighter { &[4.0, 8.0, 12.0, 18.0, 24.0] } else { &[0.5, 1.0, 1.5, 2.5, 3.5, 5.0] };
-                for w in widths {
-                    let label = crate::i18n::fmt(tl!("{n} pt"), &[("n", &w.to_string())]);
-                    mi_check(ui, app, &label, (set.width - w).abs() < 0.01, pen_command(tool), json!({"width": w}));
-                }
-                update_gallery_pen(app, custom, tool);
-            });
-        });
-    });
-    group(ui, "Convert", None, app, |ui, app| {
-        let on = app.session.view.draw.ink_to_shape;
-        big_toggle(ui, app, "inkToShape", "Ink to\nShape", "draw.inkToShape", on);
-        big(ui, app, "inkToMath", "Ink to\nMath", "draw.inkToMath", json!({}), false);
-    });
-    group(ui, "Insert", None, app, |ui, app| {
-        big(ui, app, "canvas", "Drawing\nCanvas", "insert.canvas", json!({}), false);
-    });
-    group(ui, "Replay", None, app, |ui, app| {
-        let on = app.session.view.draw.replay;
-        big_toggle(ui, app, "replay", "Ink\nReplay", "draw.replay", on);
-    });
-}
-
-/// The command that picks up `tool`.
-fn pen_command(tool: wordcraft_doc::freeform::InkTool) -> &'static str {
-    use wordcraft_doc::freeform::InkTool;
-    match tool {
-        InkTool::Pen => "draw.pen",
-        InkTool::Pencil => "draw.pencil",
-        InkTool::Highlighter => "draw.highlighter",
-    }
-}
-
-/// After the colour or thickness menu changed `tool`'s settings, the gallery pen that was in use
-/// (`custom`) takes them too.
-fn update_gallery_pen(app: &mut WordApp, custom: Option<usize>, tool: wordcraft_doc::freeform::InkTool) {
-    let set = app.session.view.draw.settings(tool);
-    if let Some(p) = custom.and_then(|i| app.session.view.draw.pens.get_mut(i))
-        && p.kind == tool
-    {
-        p.color = set.color;
-        p.width = set.width;
-    }
-}
-
-/// A pen of the gallery: its kind's icon over a bar of its colour and thickness; a click picks it
-/// up, right-click offers Remove Pen.
-fn gallery_pen(ui: &mut Ui, app: &mut WordApp, i: usize, pen: wordcraft_engine::cmd::draw::CustomPen, active: bool) {
-    use wordcraft_doc::freeform::InkTool;
-    let t = Tokens::get(ui.ctx());
-    let (r, resp) = ui.allocate_exact_size(vec2(34.0, CONTENT_H), Sense::click());
-    crate::widgets::bg(ui, r, &resp, active, &t);
-    let icon = match pen.kind {
-        InkTool::Pen => "pen",
-        InkTool::Pencil => "pencil",
-        InkTool::Highlighter => "highlight",
-    };
-    let color = crate::theme::c32(pen.color);
-    icons::paint(ui.painter(), Rect::from_center_size(pos2(r.center().x, r.min.y + 20.0), vec2(28.0, 28.0)), icon, t.icon, color);
-    let bar = (pen.width * 0.6).clamp(1.5, 8.0);
-    let y = r.min.y + 46.0;
-    ui.painter().line_segment([pos2(r.min.x + 6.0, y), pos2(r.max.x - 6.0, y)], Stroke::new(bar, color));
-    let kind = tl!(match pen.kind {
-        InkTool::Pen => "Pen",
-        InkTool::Pencil => "Pencil",
-        InkTool::Highlighter => "Highlighter",
-    });
-    let size = crate::i18n::fmt(tl!("{n} pt"), &[("n", &pen.width.to_string())]);
-    let resp = resp.on_hover_text(format!("{kind}: {size}, #{}", pen.color.hex()));
-    if resp.clicked() {
-        let _ = app.run(pen_command(pen.kind), json!({"color": pen.color.hex(), "width": pen.width}));
-    }
-    resp.context_menu(|ui| {
-        if ui.button(tl!("Remove Pen")).clicked() {
-            let _ = app.run("draw.removePen", json!({"index": i}));
-            ui.close();
-        }
-    });
-}
-
 /// The Design tab's style set gallery in a box of its own, sized from its thumbnails and clipped
 /// to it, with a gap on each side: the Colors and Fonts column can't be drawn over, or cut by,
 /// the thumbnails (#638). Returns the box and the space the thumbnails used.
@@ -1799,375 +1639,6 @@ fn group_menu(ui: &mut Ui, app: &mut WordApp, label: Option<&str>) {
     });
 }
 
-fn references(app: &mut WordApp, ui: &mut Ui) {
-    group(ui, "Table of Contents", None, app, |ui, app| {
-        menu_button(ui, app, "toc", Some("Table of\nContents"), "Table of Contents", true, "references.toc", |ui, app| {
-            mi(ui, app, "Automatic Table 1 (3 levels)", "references.toc", json!({"levels": 3}));
-            mi(ui, app, "Automatic Table 2 (2 levels)", "references.toc", json!({"levels": 2, "title": "Table of Contents"}));
-            ui.separator();
-            mi(ui, app, "Custom Table of Contents…", "ui.dialog", json!({"name": "toc"}));
-            mi(ui, app, "Remove Table of Contents", "references.removeToc", json!({}));
-        });
-        stack(ui, |ui| {
-            menu_button(ui, app, "addText", Some("Add Text"), "Add Text", false, "references.addText", |ui, app| {
-                mi(ui, app, "Do Not Show in TOC", "references.addText", json!({"level": 0}));
-                for l in 1..=3u64 {
-                    mi(ui, app, &format!("Level {l}"), "references.addText", json!({"level": l}));
-                }
-            });
-            small(ui, app, "updateTable", Some("Update Table"), "Update Table", "references.updateToc", json!({}), false);
-        });
-    });
-    group(ui, "Footnotes", Some("references.noteOptions"), app, |ui, app| {
-        big(ui, app, "footnote", "Insert\nFootnote", "references.footnote", json!({}), false);
-        stack(ui, |ui| {
-            small(ui, app, "endnote", Some("Insert Endnote"), "Insert Endnote", "references.endnote", json!({}), false);
-            small(ui, app, "nextFootnote", Some("Next Footnote"), "Next Footnote", "references.nextFootnote", json!({}), false);
-            small(ui, app, "showNotes", Some("Show Notes"), "Show Notes", "references.notes", json!({}), false);
-        });
-    });
-    group(ui, "Research", None, app, |ui, app| {
-        big(ui, app, "researcher", "Researcher", "references.researcher", json!({}), false);
-    });
-    group(ui, "Citations & Bibliography", None, app, |ui, app| {
-        // The document's sources to cite, then a new one (Create Source, #402).
-        menu_button(ui, app, "citation", Some("Insert\nCitation"), "Insert Citation", true, "", |ui, app| {
-            let sources: Vec<(String, String)> =
-                app.session.doc.sources.iter().map(|s| (s.tag.clone(), format!("{} — {}", s.author, s.title))).collect();
-            for (tag, label) in sources {
-                mi_text(ui, app, &label, "references.citation", json!({"tag": tag}));
-            }
-            if !app.session.doc.sources.is_empty() {
-                ui.separator();
-            }
-            mi(ui, app, "Add New Source…", "ui.dialog", json!({"name": "createSource"}));
-        });
-        stack(ui, |ui| {
-            small(ui, app, "sources", Some("Manage Sources"), "Manage Sources", "references.sources", json!({}), false);
-            let current = app.session.bib_style.clone();
-            let label = crate::i18n::fmt(tl!("Style: {style}"), &[("style", &current)]);
-            menu_button(ui, app, "styles", Some(&label), "Citation Style", false, "references.citationStyle", |ui, app| {
-                for st in &wordcraft_engine::cmd::citations::STYLES {
-                    mi_check(ui, app, st.name, st.name == current, "references.citationStyle", json!({"style": st.name}));
-                }
-            });
-            small(ui, app, "bibliography", Some("Bibliography"), "Bibliography", "references.bibliography", json!({}), false);
-        });
-    });
-    group(ui, "Captions", None, app, |ui, app| {
-        big(ui, app, "caption", "Insert\nCaption", "references.caption", json!({}), false);
-        stack(ui, |ui| {
-            small(
-                ui,
-                app,
-                "tableOfFigures",
-                Some("Insert Table of Figures"),
-                "Insert Table of Figures",
-                "references.tableOfFigures",
-                json!({}),
-                false,
-            );
-            small(ui, app, "update", Some("Update Table"), "Update Table of Figures", "references.updateFigures", json!({}), false);
-            small(ui, app, "crossRef", Some("Cross-reference"), "Cross-reference", "insert.crossReference", json!({}), false);
-        });
-    });
-    group(ui, "Index", None, app, |ui, app| {
-        big(ui, app, "markEntry", "Mark\nEntry", "references.markEntry", json!({}), false);
-        stack(ui, |ui| {
-            small(ui, app, "index", Some("Insert Index"), "Insert Index", "references.index", json!({}), false);
-            small(ui, app, "update", Some("Update Index"), "Update Index", "references.updateIndex", json!({}), false);
-        });
-    });
-    group(ui, "Table of Authorities", None, app, |ui, app| {
-        big(ui, app, "markCitation", "Mark\nCitation", "references.markCitation", json!({}), false);
-        stack(ui, |ui| {
-            small(
-                ui,
-                app,
-                "tableOfAuthorities",
-                Some("Insert Table of Authorities"),
-                "Insert Table of Authorities",
-                "references.tableOfAuthorities",
-                json!({}),
-                false,
-            );
-            small(ui, app, "update", Some("Update Table"), "Update Table", "references.updateAuthorities", json!({}), false);
-        });
-    });
-}
-
-fn mailings(app: &mut WordApp, ui: &mut Ui) {
-    group(ui, "Create", None, app, |ui, app| {
-        big(ui, app, "envelope", "Envelopes", "mailings.envelopes", json!({}), false);
-        big(ui, app, "labels", "Labels", "mailings.labels", json!({}), false);
-    });
-    group(ui, "Start Mail Merge", None, app, |ui, app| {
-        // The kinds of merge document the engine makes, the current one checked.
-        menu_button(ui, app, "mailMerge", Some("Start Mail\nMerge"), "Start Mail Merge", true, "mailings.start", |ui, app| {
-            let kind = app.session.merge.kind.clone();
-            for (label, k) in [
-                ("Letters", "letters"),
-                ("E-mail Messages", "emails"),
-                ("Envelopes", "envelopes"),
-                ("Labels", "labels"),
-                ("Directory", "directory"),
-                ("Normal Word Document", "normal"),
-            ] {
-                let current = kind == k || (k == "normal" && kind.is_empty());
-                mi_check(ui, app, label, current, "mailings.start", json!({"kind": k}));
-            }
-        });
-        // The command needs data, so the button offers the two ways to give it (#240).
-        menu_button(ui, app, "recipients", Some("Select\nRecipients"), "Select Recipients", true, "mailings.recipients", |ui, app| {
-            mi(ui, app, "Type a New List…", "ui.dialog", json!({"name": "newRecipientList"}));
-            mi(ui, app, "Use an Existing List…", "ui.openRecipientList", json!({}));
-        });
-        big(ui, app, "editRecipients", "Edit\nRecipient List", "mailings.editRecipients", json!({}), false);
-    });
-    group(ui, "Write & Insert Fields", None, app, |ui, app| {
-        big(ui, app, "highlightFields", "Highlight\nMerge Fields", "mailings.highlightFields", json!({}), false);
-        big(ui, app, "addressBlock", "Address\nBlock", "mailings.addressBlock", json!({}), false);
-        big(ui, app, "greetingLine", "Greeting\nLine", "mailings.greetingLine", json!({}), false);
-        big(ui, app, "mergeField", "Insert Merge\nField", "mailings.insertField", json!({}), false);
-        stack(ui, |ui| {
-            // The merge rules the engine knows; If and Skip Record If ask for their condition.
-            menu_button(ui, app, "rules", Some("Rules"), "Rules", false, "mailings.rules", |ui, app| {
-                mi(ui, app, "If…Then…Else…", "mailings.rules", json!({"rule": "IF"}));
-                mi(ui, app, "Merge Record #", "mailings.rules", json!({"rule": "MERGEREC"}));
-                mi(ui, app, "Next Record", "mailings.rules", json!({"rule": "NEXT"}));
-                mi(ui, app, "Skip Record If…", "mailings.rules", json!({"rule": "SKIPIF"}));
-            });
-            small(ui, app, "matchFields", Some("Match Fields"), "Match Fields", "mailings.matchFields", json!({}), false);
-        });
-    });
-    group(ui, "Preview Results", None, app, |ui, app| {
-        big(ui, app, "preview", "Preview\nResults", "mailings.preview", json!({}), false);
-        stack(ui, |ui| {
-            crate::widgets::row(ui, |ui| {
-                small(ui, app, "previous", None, "Previous Record", "mailings.previous", json!({}), false);
-                small(ui, app, "next", None, "Next Record", "mailings.next", json!({}), false);
-            });
-            small(ui, app, "find", Some("Find Recipient"), "Find Recipient", "mailings.findRecipient", json!({}), false);
-            small(ui, app, "checkErrors", Some("Check for Errors"), "Check for Errors", "mailings.checkErrors", json!({}), false);
-        });
-    });
-    group(ui, "Finish", None, app, |ui, app| {
-        big(ui, app, "finish", "Finish &\nMerge", "mailings.finish", json!({}), false);
-    });
-}
-
-/// Zotero (`docs/zotero.md`): the Zotero desktop app does the work in its own window.
-fn zotero(app: &mut WordApp, ui: &mut Ui) {
-    group(ui, "Citations", None, app, |ui, app| {
-        big(ui, app, "citation", "Add/Edit\nCitation", "ui.zotero.addEditCitation", json!({}), false);
-        big(ui, app, "addNote", "Add\nNote", "ui.zotero.addNote", json!({}), false);
-        big(ui, app, "pastCitation", "Move Past\nCitation", "caret.pastCitation", json!({}), false);
-    });
-    group(ui, "Bibliography", None, app, |ui, app| {
-        big(ui, app, "bibliography", "Add/Edit\nBibliography", "ui.zotero.addEditBibliography", json!({}), false);
-    });
-    group(ui, "Document", None, app, |ui, app| {
-        big(ui, app, "update", "Refresh", "ui.zotero.refresh", json!({}), false);
-        big(ui, app, "docPrefs", "Document\nPreferences", "ui.zotero.setDocPrefs", json!({}), false);
-        big(ui, app, "unlinkCitations", "Unlink\nCitations", "ui.zotero.removeCodes", json!({}), false);
-    });
-}
-
-fn review(app: &mut WordApp, ui: &mut Ui) {
-    group(ui, "Proofing", None, app, |ui, app| {
-        big(ui, app, "spelling", "Spelling &\nGrammar", "review.spelling", json!({}), false);
-        stack(ui, |ui| {
-            small(ui, app, "thesaurus", Some("Thesaurus"), "Thesaurus", "review.thesaurus", json!({}), false);
-            small(ui, app, "wordCount", Some("Word Count"), "Word Count", "ui.dialog", json!({"name": "wordCount"}), false);
-        });
-    });
-    group(ui, "Speech", None, app, |ui, app| {
-        big(ui, app, "readAloud", "Read\nAloud", "review.readAloud", json!({}), false);
-    });
-    group(ui, "Accessibility", None, app, |ui, app| {
-        big(ui, app, "accessibility", "Check\nAccessibility", "file.accessibility", json!({}), false);
-    });
-    group(ui, "Language", None, app, |ui, app| {
-        big(ui, app, "translate", "Translate", "review.translate", json!({}), false);
-        menu_button(ui, app, "language", Some("Language"), "Language", true, "", language_menu);
-    });
-    group(ui, "Comments", None, app, |ui, app| {
-        big(ui, app, "newComment", "New\nComment", "review.newComment", json!({}), false);
-        stack(ui, |ui| {
-            small(ui, app, "deleteComment", Some("Delete"), "Delete Comment", "review.deleteComment", json!({}), false);
-            small(ui, app, "prevComment", Some("Previous"), "Previous Comment", "review.previousComment", json!({}), false);
-            small(ui, app, "nextComment", Some("Next"), "Next Comment", "review.nextComment", json!({}), false);
-        });
-        let shown = app.session.view.comments_pane;
-        big(ui, app, "showComments", "Show\nComments", "view.commentsPane", json!({"value": !shown}), false);
-    });
-    group(ui, "Tracking", Some("review.trackingOptions"), app, |ui, app| {
-        let on = app.session.doc.settings.track_changes;
-        let r = big(ui, app, "trackChanges", if on { "Track\nChanges ✓" } else { "Track\nChanges" }, "review.trackChanges", json!({}), false);
-        let _ = r;
-        stack(ui, |ui| {
-            menu_button(
-                ui,
-                app,
-                "markup",
-                Some(if app.session.view.show_markup { "All Markup" } else { "No Markup" }),
-                "Display for Review",
-                false,
-                "review.markup",
-                |ui, app| {
-                    mi(ui, app, "All Markup", "review.markup", json!({"value": "all"}));
-                    mi(ui, app, "No Markup", "review.markup", json!({"value": "noMarkup"}));
-                },
-            );
-            small(ui, app, "reviewingPane", Some("Reviewing Pane"), "Reviewing Pane", "review.changes", json!({}), false);
-        });
-    });
-    group(ui, "Changes", None, app, |ui, app| {
-        menu_button(ui, app, "accept", Some("Accept"), "Accept", true, "review.accept", |ui, app| {
-            mi(ui, app, "Accept This Change", "review.accept", json!({}));
-            mi(ui, app, "Accept All Changes", "review.acceptAll", json!({}));
-        });
-        menu_button(ui, app, "reject", Some("Reject"), "Reject", true, "review.reject", |ui, app| {
-            mi(ui, app, "Reject Change", "review.reject", json!({}));
-            mi(ui, app, "Reject All Changes", "review.rejectAll", json!({}));
-        });
-        stack(ui, |ui| {
-            small(ui, app, "prevChange", Some("Previous"), "Previous Change", "review.previousChange", json!({}), false);
-            small(ui, app, "nextChange", Some("Next"), "Next Change", "review.nextChange", json!({}), false);
-        });
-    });
-    group(ui, "Compare", None, app, |ui, app| {
-        big(ui, app, "compare", "Compare", "review.compare", json!({}), false);
-    });
-    group(ui, "Protect", None, app, |ui, app| {
-        big(ui, app, "blockAuthors", "Block\nAuthors", "review.blockAuthors", json!({}), false);
-        big(ui, app, "restrict", "Restrict\nEditing", "review.restrict", json!({}), false);
-    });
-    group(ui, "Ink", None, app, |ui, app| {
-        let hidden = app.session.view.hide_ink;
-        big_toggle(ui, app, "hideInk", "Hide\nInk", "review.hideInk", hidden);
-    });
-}
-
-/// Developer › Controls: content controls.
-fn developer(app: &mut WordApp, ui: &mut Ui) {
-    let design = app.session.view.design_mode;
-    group(ui, "Controls", None, app, |ui, app| {
-        let rows: [[(&str, &str, &str); 3]; 3] = [
-            [
-                ("ccRichText", "Rich Text Content Control", "developer.richText"),
-                ("ccPlainText", "Plain Text Content Control", "developer.plainText"),
-                ("ccPicture", "Picture Content Control", "developer.picture"),
-            ],
-            [
-                ("ccGallery", "Building Block Gallery Content Control", "developer.buildingBlock"),
-                ("ccCheckBox", "Check Box Content Control", "developer.checkBox"),
-                ("ccComboBox", "Combo Box Content Control", "developer.comboBox"),
-            ],
-            [
-                ("ccDropDown", "Drop-Down List Content Control", "developer.dropDown"),
-                ("ccDate", "Date Picker Content Control", "developer.datePicker"),
-                ("ccRepeat", "Repeating Section Content Control", "developer.repeatingSection"),
-            ],
-        ];
-        // Three rows of small buttons fill the group's height, like every other stack.
-        stack(ui, |ui| {
-            for row in rows {
-                crate::widgets::row(ui, |ui| {
-                    for (icon, tip, id) in row {
-                        small(ui, app, icon, None, tip, id, json!({}), false);
-                    }
-                });
-            }
-        });
-        stack(ui, |ui| {
-            small(ui, app, "designMode", Some("Design Mode"), "Design Mode", "developer.designMode", json!({}), design);
-            small(ui, app, "properties", Some("Properties"), "Properties", "developer.properties", json!({}), false);
-        });
-    });
-}
-
-fn view(app: &mut WordApp, ui: &mut Ui) {
-    let v = app.session.view.clone();
-    group(ui, "Views", None, app, |ui, app| {
-        big(ui, app, "readMode", "Read\nMode", "view.readMode", json!({}), false);
-        big(ui, app, "printLayout", "Print\nLayout", "view.printLayout", json!({}), false);
-        big(ui, app, "webLayout", "Web\nLayout", "view.webLayout", json!({}), false);
-        stack(ui, |ui| {
-            small(ui, app, "outline", Some("Outline"), "Outline", "view.outline", json!({}), false);
-            small(ui, app, "draft", Some("Draft"), "Draft", "view.draft", json!({}), false);
-        });
-    });
-    group(ui, "Immersive", None, app, |ui, app| {
-        big(ui, app, "focus", "Focus", "view.focus", json!({}), false);
-        big(ui, app, "immersive", "Immersive\nReader", "view.immersive", json!({}), false);
-    });
-    group(ui, "Page Movement", None, app, |ui, app| {
-        big(ui, app, "vertical", "Vertical", "view.vertical", json!({}), false);
-        big(ui, app, "sideToSide", "Side\nto Side", "view.sideToSide", json!({}), false);
-    });
-    group(ui, "Show", None, app, |ui, app| {
-        // Three rows fill the group's height; a fourth check box would run into its label.
-        stack(ui, |ui| {
-            let mut r = v.ruler;
-            if ui.checkbox(&mut r, tl!("Ruler")).changed() {
-                let _ = app.run("view.ruler", json!({"value": r}));
-            }
-            let mut g = v.gridlines;
-            if ui.checkbox(&mut g, tl!("Gridlines")).changed() {
-                let _ = app.run("view.gridlines", json!({"value": g}));
-            }
-            let mut n = v.nav_pane;
-            if ui.checkbox(&mut n, tl!("Navigation Pane")).changed() {
-                let _ = app.run("view.navigationPane", json!({"value": n}));
-            }
-        });
-        stack(ui, |ui| {
-            let mut w = v.hide_white_space;
-            if ui.checkbox(&mut w, tl!("Hide White Space")).changed() {
-                let _ = app.run("view.hideWhiteSpace", json!({"value": w}));
-            }
-        });
-    });
-    group(ui, "Zoom", None, app, |ui, app| {
-        big(ui, app, "zoom", "Zoom", "ui.dialog", json!({"name": "zoom"}), false);
-        big(ui, app, "zoom100", "100%", "view.zoom100", json!({}), false);
-        // Step the zoom up and down by 10% (issue #67), from whatever the page shows now.
-        stack(ui, |ui| {
-            small(ui, app, "zoomIn", Some("Zoom In"), "Zoom In", "view.zoomIn", json!({}), false);
-            small(ui, app, "zoomOut", Some("Zoom Out"), "Zoom Out", "view.zoomOut", json!({}), false);
-        });
-        stack(ui, |ui| {
-            small(ui, app, "onePage", Some("One Page"), "One Page", "view.onePage", json!({}), v.fit == "onePage");
-            small(ui, app, "multiplePages", Some("Multiple Pages"), "Multiple Pages", "view.multiplePages", json!({}), v.multi_page);
-            small(ui, app, "pageWidth", Some("Page Width"), "Page Width", "view.pageWidth", json!({}), v.fit == "pageWidth");
-        });
-    });
-    group(ui, "Dark Mode", None, app, |ui, app| {
-        big(ui, app, "darkMode", "Switch\nModes", "view.darkMode", json!({}), false);
-        menu_button(ui, app, "interfaceTheme", Some("Interface\nTheme"), "Interface Theme", true, "", |ui, app| {
-            for a in crate::theme::Appearance::ALL {
-                if ui.add(egui::Button::selectable(app.ui.theme == a, tl!(a.label())).min_size(vec2(200.0, 0.0))).clicked() {
-                    let _ = app.run("view.interfaceTheme", json!({"value": a.code()}));
-                    ui.close();
-                }
-            }
-        });
-    });
-    group(ui, "Window", None, app, |ui, app| {
-        big(ui, app, "newWindow", "New\nWindow", "view.newWindow", json!({}), false);
-        big(ui, app, "arrangeAll", "Arrange\nAll", "view.arrangeAll", json!({}), false);
-        big(ui, app, "split", "Split", "view.split", json!({}), false);
-        big(ui, app, "fullScreen", "Full\nScreen", "view.fullScreen", json!({}), v.full_screen);
-    });
-    group(ui, "Macros", None, app, |ui, app| {
-        big(ui, app, "macros", "Macros", "tools.macros", json!({}), false);
-    });
-    group(ui, "Templates", None, app, |ui, app| {
-        big(ui, app, "documentTemplate", "Templates", "tools.templates", json!({}), false);
-    });
-}
-
 /// The Outlining tab (Outline view): outline levels, moving, expanding and collapsing, what is
 /// shown, and closing the view.
 fn outlining(app: &mut WordApp, ui: &mut Ui) {
@@ -2223,16 +1694,6 @@ fn outlining(app: &mut WordApp, ui: &mut Ui) {
     });
     group(ui, "Close", None, app, |ui, app| {
         big(ui, app, "closeOutline", "Close Outline\nView", "outline.close", json!({}), false);
-    });
-}
-
-fn help(app: &mut WordApp, ui: &mut Ui) {
-    group(ui, "Help", None, app, |ui, app| {
-        big(ui, app, "help", "Help", "ui.dialog", json!({"name": "about"}), false);
-        big(ui, app, "discord", "Community\nDiscord", "ui.discord", json!({}), false);
-    });
-    group(ui, "Agents", None, app, |ui, app| {
-        big(ui, app, "macros", "Commands", "ui.dialog", json!({"name": "commands"}), false);
     });
 }
 
@@ -3170,8 +2631,8 @@ mod tests {
         assert!(tall.is_empty(), "groups taller than the ribbon: {tall:#?}");
     }
 
-    /// #897: the tabs that didn't fit were drawn under Comments / Editing / Share, so at 1280 pt
-    /// in Polish the table tabs were out of reach. They stay on the strip and a click opens them.
+    /// #897: the tabs that didn't fit were drawn under the buttons beside them (Share), so at
+    /// 1280 pt in Polish the table tabs were out of reach. They stay on the strip and a click opens them.
     #[test]
     fn table_tabs_stay_clickable_when_the_tab_strip_overflows() {
         use egui_kittest::kittest::Queryable;
@@ -3187,7 +2648,7 @@ mod tests {
             app,
         );
         h.run_steps(3);
-        let buttons = [tl!("Comments"), tl!("Editing")].map(|b| h.get_by_label(b).rect());
+        let buttons = [tl!("Share")].map(|b| h.get_by_label(b).rect());
         for tab in ["Table Design", "Table Layout"] {
             let r = h.get_by_label(tl!(tab)).rect();
             assert!(r.right() <= 1280.0 && buttons.iter().all(|b| !b.intersects(r)), "{tab} {r:?} under {buttons:?}");
@@ -3197,8 +2658,8 @@ mod tests {
         }
     }
 
-    /// #2026: at every width and in the longest languages no tab is drawn over Comments /
-    /// Editing / Share, the tabs stay inside the window, and the buttons keep their room.
+    /// #2026: at every width and in the longest languages no tab is drawn over Share, the tabs
+    /// stay inside the window, and the button keeps its room.
     #[test]
     fn tab_strip_never_overlaps_the_right_buttons() {
         use egui_kittest::kittest::Queryable;
@@ -3217,9 +2678,8 @@ mod tests {
                     app,
                 );
                 h.run_steps(3);
-                let buttons: Vec<Rect> =
-                    [tl!("Comments"), tl!("Editing"), tl!("Share")].iter().filter_map(|b| h.query_by_label(b).map(|n| n.rect())).collect();
-                assert_eq!(buttons.len(), 3, "{lang} {width}: the three buttons are on the strip");
+                let buttons: Vec<Rect> = [tl!("Share")].iter().filter_map(|b| h.query_by_label(b).map(|n| n.rect())).collect();
+                assert_eq!(buttons.len(), 1, "{lang} {width}: Share is on the strip");
                 assert!(buttons.iter().all(|b| b.right() <= width + 0.5 && b.left() >= 0.0), "{lang} {width}: buttons inside {buttons:?}");
                 for tab in crate::ribbon::TABS.iter().copied().chain(["Table Design", "Table Layout"]) {
                     // A group folded into a button can share the tab's name (Draw): only the node on

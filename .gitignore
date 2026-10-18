@@ -8,3 +8,7 @@ plan/
 /.claude/
 /target-*/
 /craft-fonts/
+/packaging/android/app/build/
+/packaging/android/build/
+/packaging/android/.gradle/
+/packaging/android/local.properties

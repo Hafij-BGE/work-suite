@@ -1,0 +1,52 @@
+plugins {
+    id "com.android.application"
+}
+
+// Set by build.sh from the workspace version (Cargo.toml).
+def wordcraftVersion = (project.findProperty("wordcraftVersion") ?: "0.0.0").toString()
+def parts = (wordcraftVersion.tokenize("-")[0].tokenize(".") + ["0", "0", "0"]).take(3).collect { it.isInteger() ? it.toInteger() : 0 }
+def wordcraftVersionCode = parts[0] * 10000 + parts[1] * 100 + parts[2]
+
+android {
+    namespace "io.github.hafijbge.wordcraft"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "io.github.hafijbge.wordcraft"
+        // Android 8: wgpu's Vulkan and OpenGL ES 3 back ends, and `android-activity`.
+        minSdk 26
+        // 34, not 35: Android 15 draws apps edge to edge under the status bar when they target 35.
+        targetSdk 34
+        versionCode Math.max(1, wordcraftVersionCode)
+        versionName wordcraftVersion
+    }
+
+    // build.sh puts the Rust library (lib/<abi>/libwordcraft_android.so) and the launcher icons
+    // (rendered from assets/app-icon) here; nothing in them is checked in.
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ["build/rust/jniLibs"]
+            res.srcDirs += ["build/rust/res"]
+        }
+    }
+
+    signingConfigs {
+        // A release keystore when one is given (WORDCRAFT_KEYSTORE…), else the debug key.
+        release {
+            def store = System.getenv("WORDCRAFT_KEYSTORE")
+            if (store) {
+                storeFile file(store)
+                storePassword System.getenv("WORDCRAFT_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("WORDCRAFT_KEY_ALIAS")
+                keyPassword System.getenv("WORDCRAFT_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv("WORDCRAFT_KEYSTORE") ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+}

@@ -65,21 +65,9 @@ impl Target {
     }
 }
 
-/// Word's tab letters, as Word for Windows shows them after Alt (File F, Design G, References S,
-/// Review R, View W, Help Y). File opens the Backstage.
-const TAB_LETTERS: [(&str, &str); 11] = [
-    ("File", "F"),
-    ("Home", "H"),
-    ("Insert", "N"),
-    ("Draw", "D"),
-    ("Design", "G"),
-    ("Layout", "P"),
-    ("References", "S"),
-    ("Mailings", "M"),
-    ("Review", "R"),
-    ("View", "W"),
-    ("Help", "Y"),
-];
+/// Word's tab letters, as Word for Windows shows them after Alt (File F, Design G), for the tabs
+/// the Android build keeps. File opens the Backstage.
+const TAB_LETTERS: [(&str, &str); 5] = [("File", "F"), ("Home", "H"), ("Insert", "N"), ("Design", "G"), ("Layout", "P")];
 
 /// Word's contextual table tabs take two letters (Alt, J, T and Alt, J, L), shown in a table.
 const TABLE_TAB_LETTERS: [(&str, &str); 2] = [("Table Design", "JT"), ("Table Layout", "JL")];
@@ -872,11 +860,8 @@ mod tests {
         assert_eq!(tab_letter("Insert"), "N");
         assert_eq!(tab_letter("Design"), "G");
         assert_eq!(tab_letter("Layout"), "P");
-        assert_eq!(tab_letter("References"), "S");
-        assert_eq!(tab_letter("Mailings"), "M");
-        assert_eq!(tab_letter("Review"), "R");
-        assert_eq!(tab_letter("View"), "W");
-        assert_eq!(tab_letter("Help"), "Y");
+        // Tabs the Android build leaves out have no badge.
+        assert_eq!(tab_letter("Review"), "");
         assert_eq!(tab_letter("Table Design"), "JT");
         assert_eq!(tab_letter("Table Layout"), "JL");
     }
@@ -1004,15 +989,15 @@ mod tests {
         assert!(handle_key(&mut a, egui::Key::F));
         assert!(a.ui.backstage, "Alt, F opens File");
         assert_eq!(a.ui.keytips, Phase::Off);
-        // Alt, W: View; Alt, R: Review (Word's letters, not V and S).
+        // Alt, G: Design; Alt, P: Layout (Word's letters, not D and L).
         a.ui.backstage = false;
         activate(&mut a);
-        assert!(handle_key(&mut a, egui::Key::W));
-        assert_eq!((a.ui.tab.as_str(), a.ui.keytips), ("View", Phase::Commands));
+        assert!(handle_key(&mut a, egui::Key::G));
+        assert_eq!((a.ui.tab.as_str(), a.ui.keytips), ("Design", Phase::Commands));
         a.ui.keytips = Phase::Off;
         activate(&mut a);
-        assert!(handle_key(&mut a, egui::Key::R));
-        assert_eq!(a.ui.tab, "Review");
+        assert!(handle_key(&mut a, egui::Key::P));
+        assert_eq!(a.ui.tab, "Layout");
     }
 
     /// Word's contextual table tabs take two letters (#1183): Alt, J, T is Table Design and

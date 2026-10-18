@@ -1,4 +1,9 @@
-//! File tab (Backstage): Home/New, Open, Info, Save As, Print, Export, Close, Options, About.
+//! File tab (Backstage): Home, New, Open, Save, Save As, Export, Close and About.
+//!
+//! The Android build keeps the side menu short: Info, Print, Options and the Discord link are
+//! left out of it (Print goes through Export › PDF). Their pages stay reachable through their
+//! commands (`file.info`, `file.print`, `file.options`) and the command search. Recover is listed
+//! only while there is something to recover.
 
 use egui::{Align2, Rect, Sense, Stroke, Ui, pos2, vec2};
 use serde_json::json;
@@ -7,18 +12,15 @@ use crate::theme::{APP_COLOR, Tokens, medium, regular, semibold};
 use crate::{WordApp, icons};
 
 /// The side menu: page id, label and icon (#1714).
-const PAGES: [(&str, &str, &str); 11] = [
+const PAGES: [(&str, &str, &str); 8] = [
     ("home", "Home", "homeFolder"),
     ("new", "New", "blankPage"),
     ("open", "Open", "open"),
-    ("info", "Info", "info"),
     ("recover", "Recover", "recover"),
     ("save", "Save", "save"),
     ("saveAs", "Save As", "saveAs"),
-    ("print", "Print", "print"),
     ("export", "Export", "export"),
     ("close", "Close", "close"),
-    ("options", "Options", "options"),
 ];
 
 /// The Backstage back chevron's centre on macOS (#1873): beside the traffic lights in a
@@ -38,8 +40,12 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
         app.ui.backstage_page = "home".into();
     }
     let mac = app.integrated_titlebar;
+    // A phone in portrait: a narrower side menu and margins leave room for the page beside it.
+    let narrow = ui.available_width() < 700.0;
+    let nav_w = if narrow { 150.0 } else { 200.0 };
+    let page_margin = if narrow { egui::Margin::symmetric(12, 16) } else { egui::Margin::symmetric(40, 30) };
     egui::Panel::left("backstage_nav")
-        .exact_size(200.0)
+        .exact_size(nav_w)
         // Fixed width, as in Word: without this egui shows a resize handle that does nothing (#502).
         .resizable(false)
         .frame(egui::Frame::NONE.fill(if recovery { egui::Color32::BLACK } else { APP_COLOR }).inner_margin(egui::Margin {
@@ -53,7 +59,7 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 // macOS (#222): the Backstage covers the title bar, so its top band is the title
                 // bar: the back button sits beside the traffic lights, centred with them and as far
                 // from them as the title bar's own controls, and the rest of the band drags the window.
-                let (band, drag) = ui.allocate_exact_size(vec2(200.0, app.mac_titlebar.height), Sense::click_and_drag());
+                let (band, drag) = ui.allocate_exact_size(vec2(nav_w, app.mac_titlebar.height), Sense::click_and_drag());
                 if drag.drag_started() {
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
                 }
@@ -63,7 +69,7 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 icons::paint(ui.painter(), Rect::from_center_size(c, vec2(18.0, 18.0)), "chevronLeft", egui::Color32::WHITE, egui::Color32::WHITE);
                 resp
             } else {
-                let (r, resp) = ui.allocate_exact_size(vec2(200.0, 40.0), Sense::click());
+                let (r, resp) = ui.allocate_exact_size(vec2(nav_w, 40.0), Sense::click());
                 icons::paint(
                     ui.painter(),
                     Rect::from_center_size(pos2(r.min.x + 26.0, r.center().y), vec2(18.0, 18.0)),
@@ -79,10 +85,15 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 app.canvas.want_focus = true;
             }
             ui.add_space(if mac { 12.0 } else { 6.0 });
+            // Recover only while there is something to recover (or its page is showing).
+            let can_recover = recovery || !app.session.recovery_documents().is_empty();
             for (id, label, icon) in PAGES {
+                if id == "recover" && !can_recover {
+                    continue;
+                }
                 // No document open (#1129): Info, Save, Save As, Print and Export are greyed out.
                 let on = has_document || works_without_document(id);
-                let (r, resp) = ui.add_enabled_ui(on, |ui| ui.allocate_exact_size(vec2(200.0, 38.0), Sense::click())).inner;
+                let (r, resp) = ui.add_enabled_ui(on, |ui| ui.allocate_exact_size(vec2(nav_w, 38.0), Sense::click())).inner;
                 resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, on, tl!(label)));
                 let active = app.ui.backstage_page == id;
                 if active {
@@ -129,25 +140,20 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 }
             }
             ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
-                for (label, id) in [("About", "about"), ("Discord community", "discord")] {
-                    let (r, resp) = ui.allocate_exact_size(vec2(200.0, 32.0), Sense::click());
-                    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), tl!(label)));
-                    if resp.hovered() {
-                        ui.painter().rect_filled(r, 0.0, egui::Color32::from_white_alpha(26));
-                    }
-                    ui.painter().text(pos2(r.min.x + 22.0, r.center().y), Align2::LEFT_CENTER, tl!(label), regular(13.0), egui::Color32::WHITE);
-                    if resp.clicked() {
-                        if id == "discord" {
-                            let _ = app.run("ui.discord", json!({}));
-                        } else {
-                            app.dialog = crate::dialogs::Dialog::open("about", app);
-                        }
-                    }
+                let label = "About";
+                let (r, resp) = ui.allocate_exact_size(vec2(nav_w, 32.0), Sense::click());
+                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), tl!(label)));
+                if resp.hovered() {
+                    ui.painter().rect_filled(r, 0.0, egui::Color32::from_white_alpha(26));
+                }
+                ui.painter().text(pos2(r.min.x + 22.0, r.center().y), Align2::LEFT_CENTER, tl!(label), regular(13.0), egui::Color32::WHITE);
+                if resp.clicked() {
+                    app.dialog = crate::dialogs::Dialog::open("about", app);
                 }
             });
         });
     egui::CentralPanel::default()
-        .frame(egui::Frame::NONE.fill(if recovery { egui::Color32::BLACK } else { t.ribbon }).inner_margin(egui::Margin::symmetric(40, 30)))
+        .frame(egui::Frame::NONE.fill(if recovery { egui::Color32::BLACK } else { t.ribbon }).inner_margin(page_margin))
         .show(ui, |ui| {
             // The Print page fills the pane and scrolls its settings and its preview itself (#1156).
             if app.ui.backstage_page == "print" {

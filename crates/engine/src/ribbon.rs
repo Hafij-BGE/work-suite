@@ -15,8 +15,11 @@ use crate::Registry;
 
 /// The ribbon's tabs in their default order. `File` opens Backstage: it is always first and
 /// isn't part of the customizable list.
-pub const TABS: [&str; 13] =
-    ["File", "Home", "Insert", "Draw", "Design", "Layout", "References", "Mailings", "Review", "View", "Developer", "Zotero", "Help"];
+///
+/// The Android build keeps the tabs used every day on a phone or tablet; Draw, References,
+/// Mailings, Review, View, Developer, Zotero and Help are left out (their commands stay in the
+/// registry, so shortcuts, the command search, the CLI and MCP still reach them).
+pub const TABS: [&str; 5] = ["File", "Home", "Insert", "Design", "Layout"];
 /// Tabs that come up with the selection; custom tabs can't take their names.
 pub const CONTEXTUAL_TABS: [&str; 7] =
     ["Table Design", "Table Layout", "Picture Format", "Shape Format", "Equation", "Chart Design", "SmartArt Design"];
@@ -444,7 +447,7 @@ mod tests {
     fn layout_changes_through_the_command() {
         let mut s = crate::Session::new(wordcraft_doc::Document::new());
         let mut run = |v: Value| s.run("tools.customizeRibbon", &v);
-        let r = run(json!({"newTab": {"name": "Mine", "after": "Home"}, "hide": "Draw"})).unwrap();
+        let r = run(json!({"newTab": {"name": "Mine", "after": "Home"}, "hide": "Design"})).unwrap();
         assert_eq!(r["tab"], "Mine");
         run(json!({"add": {"tab": "Mine", "group": "New Group", "command": "format.bold"}})).unwrap();
         run(json!({"newGroup": {"tab": "Insert", "name": "Extras"}})).unwrap();
@@ -454,7 +457,7 @@ mod tests {
         let tabs = r["tabs"].as_array().unwrap();
         assert_eq!(tabs[0]["name"], "Writing");
         assert_eq!(tabs[0]["groups"][0]["commands"], json!(["format.bold"]));
-        assert!(tabs.iter().any(|t| t["name"] == "Draw" && t["hidden"] == true));
+        assert!(tabs.iter().any(|t| t["name"] == "Design" && t["hidden"] == true));
         assert_eq!(r["qat"], json!(["edit.undo", "edit.redo", "format.bold"]));
         // Built-in tabs keep their names and can only be hidden; reserved and unknown names fail.
         assert!(run(json!({"rename": {"tab": "Home", "to": "Start"}})).is_err());
@@ -475,7 +478,7 @@ mod tests {
         let mut l = RibbonLayout::default();
         l.new_tab(None, None).unwrap();
         l.add(&reg, "New Tab", "New Group", "format.italic", None).unwrap();
-        l.set_hidden("Mailings", true).unwrap();
+        l.set_hidden("Layout", true).unwrap();
         l.qat_add(&reg, "edit.repeat", None).unwrap();
         let back: RibbonLayout = serde_json::from_str(&serde_json::to_string(&l).unwrap()).unwrap();
         assert_eq!(back, l);
@@ -485,7 +488,7 @@ mod tests {
                 {"name": "Home", "groups": [{"name": "G", "commands": ["format.bold", "gone.command", 7, "format.bold"]}]},
                 {"name": "Home"},
                 {"name": "Bogus"},
-                {"name": "Review", "custom": true},
+                {"name": "Layout", "custom": true},
                 {"name": "  "},
                 {"name": "Mine", "custom": true, "hidden": "yes", "groups": "x"},
                 5
@@ -495,7 +498,7 @@ mod tests {
         let mut j: RibbonLayout = serde_json::from_value(junk).unwrap();
         j.retain_known(&reg);
         let tabs = j.tabs();
-        assert_eq!(tabs.len(), TABS.len(), "11 built-in tabs and Mine: {tabs:?}");
+        assert_eq!(tabs.len(), TABS.len(), "the built-in tabs (File aside) and Mine: {tabs:?}");
         assert_eq!(tabs[0].groups[0].commands, ["format.bold"]);
         assert!(tabs.iter().any(|t| t.custom && t.name == "Mine" && !t.hidden));
         assert_eq!(j.qat(), ["edit.undo"]);

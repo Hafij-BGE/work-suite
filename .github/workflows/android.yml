@@ -1,0 +1,62 @@
+# Android: build the APK (packaging/android/build.sh) and keep it as a workflow artifact, so a
+# phone can install it from the run's page. Debug-signed unless the WORDCRAFT_KEYSTORE_* secrets
+# are set.
+name: Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/android.yml
+      - apps/wordcraft-android/**
+      - crates/**
+      - packaging/android/**
+      - Cargo.lock
+  pull_request:
+    paths:
+      - .github/workflows/android.yml
+      - apps/wordcraft-android/**
+      - crates/**
+      - packaging/android/**
+      - Cargo.lock
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: android
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+      - name: Install the SDK platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+      - name: Build the APK
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+        run: packaging/android/build.sh debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WordCraft-android
+          path: dist/release/*.apk
+          if-no-files-found: error

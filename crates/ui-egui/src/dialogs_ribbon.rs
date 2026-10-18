@@ -403,7 +403,7 @@ mod tests {
         let mut a = app();
         a.run("tools.customizeRibbon", json!({})).unwrap();
         assert!(matches!(a.dialog, Some(Dialog::CustomizeRibbon { .. })));
-        a.run("tools.customizeRibbon", json!({"newTab": {"name": "Mine"}, "hide": "Draw", "qatAdd": "format.bold"})).unwrap();
+        a.run("tools.customizeRibbon", json!({"newTab": {"name": "Mine"}, "hide": "Design", "qatAdd": "format.bold"})).unwrap();
         a.run("tools.customizeRibbon", json!({"add": {"tab": "Mine", "group": "New Group", "command": "format.italic"}})).unwrap();
         let saved = serde_json::to_string(&a.prefs()).unwrap();
         let mut b = app();
@@ -412,7 +412,7 @@ mod tests {
         let tabs = b.session.ribbon.tabs();
         let mine = tabs.iter().find(|t| t.name == "Mine").unwrap();
         assert_eq!(mine.groups[0].commands, ["format.italic"]);
-        assert!(tabs.iter().any(|t| t.name == "Draw" && t.hidden));
+        assert!(tabs.iter().any(|t| t.name == "Design" && t.hidden));
         assert_eq!(b.session.ribbon.qat(), ["file.save", "edit.undo", "edit.redo", "format.bold"]);
 
         let mut c = app();

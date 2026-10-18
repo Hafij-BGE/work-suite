@@ -80,6 +80,7 @@ pub mod table_pen;
 pub mod table_resize;
 pub mod table_ruler;
 pub mod theme;
+pub mod touch;
 pub mod widgets;
 pub mod window_close;
 pub mod window_geometry;
@@ -5459,17 +5460,13 @@ mod tests {
         let para = h.state().session.doc.para_at(&h.state().session.sel.focus).expect("caret paragraph");
         assert_eq!(para.props.style.as_deref(), Some("Heading1"), "the tile applied its style");
 
-        // A ribbon tab name, then a View tab check box.
-        h.get_by_role_and_label(Role::Button, "View").click();
-        type_after_click(&mut h, "View tab", " tab");
-        assert_eq!(h.state().ui.tab, "View");
-        let ruler = h.state().session.view.ruler;
-        h.get_by_role_and_label(Role::CheckBox, "Ruler").click();
-        type_after_click(&mut h, "Ruler check box", " ruler");
-        assert_ne!(h.state().session.view.ruler, ruler, "the check box toggled the ruler");
+        // A ribbon tab name.
+        h.get_by_role_and_label(Role::Button, "Layout").click();
+        type_after_click(&mut h, "Layout tab", " tab");
+        assert_eq!(h.state().ui.tab, "Layout");
 
         // Empty space at the right end of the ribbon, under the tab strip.
-        let tab = h.get_by_role_and_label(Role::Button, "View").rect();
+        let tab = h.get_by_role_and_label(Role::Button, "Layout").rect();
         let blank = egui::pos2(1425.0, tab.max.y + 25.0);
         for pressed in [true, false] {
             h.hover_at(blank);
@@ -7868,7 +7865,7 @@ mod tests {
     fn focus_hides_the_ribbon_and_escape_brings_it_back() {
         use egui_kittest::kittest::Queryable;
         let mut a = app();
-        a.ui.tab = "View".into();
+        a.ui.tab = "Home".into();
         a.session.view.nav_pane = true;
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).build_ui_state(
             |ui, app: &mut WordApp| {
@@ -7882,18 +7879,18 @@ mod tests {
             h.step();
         }
         let shown = |h: &egui_kittest::Harness<WordApp>, label| h.query_by_label(label).is_some();
-        assert!(shown(&h, "Ruler"), "the View tab is showing");
+        assert!(shown(&h, "Heading 1"), "the Home tab is showing");
         h.get_by_role_and_label(egui::accesskit::Role::Button, "Focus").click();
         h.step();
         h.step();
         assert!(h.state().session.view.focus_mode);
-        assert!(!shown(&h, "Ruler") && !shown(&h, "Focus"), "the ribbon is hidden");
+        assert!(!shown(&h, "Heading 1") && !shown(&h, "Focus"), "the ribbon is hidden");
         assert!(!shown(&h, "Navigation"), "and so is the Navigation pane");
         h.event(egui::Event::Key { key: egui::Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::NONE });
         h.step();
         h.step();
         assert!(!h.state().session.view.focus_mode, "Escape leaves Focus");
-        assert!(shown(&h, "Ruler"), "and the ribbon is back");
+        assert!(shown(&h, "Heading 1"), "and the ribbon is back");
         assert!(shown(&h, "Navigation"), "with the pane");
         // Immersive Reader is Read Mode, not Focus: its status bar stays.
         h.state_mut().run("view.immersive", json!({})).unwrap();
