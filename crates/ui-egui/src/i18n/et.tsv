@@ -2322,3 +2322,11 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Sisesta suurus mis tahes ühikus, näiteks 5 cm või 300 px. Teine külg muutub kaasa, nii et pilt säilitab oma proportsioonid.
 
 	Import…	Impordi…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	Teave WorkSuite Writeri kohta
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	Tasuta avatud lähtekoodiga tekstitöötlusprogramm telefonidele ja tahvelarvutitele, kirjutatud Rustis.\nPõhineb ArtCrafti meeskonna WordCraftil.
+	Browse this device…	Sirvi seda seadet…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	Ava fail rakenduse enda failisirvijaga, kui süsteemi failidialoog ei ilmu.
+	Source code: github.com/Hafij-BGE/work-suite	Lähtekood: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft

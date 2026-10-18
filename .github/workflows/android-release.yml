@@ -1,5 +1,5 @@
 # Android release: on a tag `android-v<version>`, or run by hand (Actions › Android release › Run
-# workflow, which tags the commit `android-v<version in Cargo.toml>`), build the release APK
+# workflow, which tags the commit `android-v<packaging/android/VERSION>`), build the release APK
 # (packaging/android/build.sh release) and publish it as a GitHub Release with
 # packaging/android/release-notes.md. Signed with the WORDCRAFT_KEYSTORE_* secrets when they are
 # set (see packaging/android/README.md), else with the runner's throwaway debug key.
@@ -59,14 +59,14 @@ jobs:
       - name: Checksum and tag
         run: |
           cd dist/release && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
-          . "$GITHUB_WORKSPACE/packaging/env.sh"
+          VERSION="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/packaging/android/VERSION")"
           if [ "${GITHUB_REF_TYPE}" = tag ]; then tag="$GITHUB_REF_NAME"; else tag="android-v$VERSION"; fi
           echo "TAG=$tag" >> "$GITHUB_ENV"
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
-          name: WordCraft for Android ${{ env.TAG }}
+          name: WorkSuite Writer ${{ env.TAG }}
           body_path: packaging/android/release-notes.md
           prerelease: true
           files: |

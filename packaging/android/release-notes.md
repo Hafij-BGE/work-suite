@@ -1,31 +1,30 @@
-The first Android build of WordCraft, the open-source word processor, based on
-[storytold/wordcraft](https://github.com/storytold/wordcraft) 0.8.0.
+WorkSuite Writer, a free, open-source word processor for Android, based on
+[WordCraft](https://github.com/storytold/wordcraft).
 
-**Preview:** this build hasn't been run on a real phone yet, so expect rough edges. Please report
-what you find in an issue.
+**Preview:** expect rough edges, and please report what you find in an issue.
+
+## New in 0.8.1
+
+- **New name and icon:** WordCraft for Android is now *WorkSuite Writer*, with its own icon.
+- **Android's file picker:** Open, Save As, Export and Insert › Pictures use the system picker, so
+  you can reach Downloads, Documents, SD cards and cloud storage (Drive and others).
+- **Open with:** documents (.docx, .doc, .odt, .rtf, .txt, .md) open from your file manager, mail
+  and chat apps with "Open with" or "Share".
+- **Saves go back:** saving a document you opened from another place updates that file.
+- The "All files access" permission is no longer needed or asked for.
 
 ## Install
 
-1. Download `WordCraft-0.8.0-android-release.apk` below, on your phone.
+1. Download `WorkSuite-Writer-0.8.1-android-release.apk` below, on your phone.
 2. Open it, and allow installing from that app when Android asks.
 
-For 64-bit ARM phones and tablets (almost every phone since about 2017) running Android 8 or later.
+If 0.8.0 (WordCraft) is installed, uninstall it first: each preview is signed with a different key.
 
-## What's in it
-
-- **A lighter ribbon:** File, Home, Insert, Design and Layout.
-- **A short File menu:** Home, New, Open, Save, Save As, Export (PDF, Word and more), Close and
-  About.
-- **Touch:** drag to scroll, tap to place the cursor, double-tap to select a word (and drag to
-  select more), long press for Cut/Copy/Paste, pinch to zoom. Back closes menus and dialogs.
-- Opens and saves .docx, .odt, .rtf, .md, .txt and more; documents go to `Documents/WordCraft`.
-- Keeps a recovery copy of unsaved work in case Android stops the app.
+For 64-bit ARM phones and tablets running Android 8 or later.
 
 ## Known limits
 
 - The on-screen keyboard types letters, digits and punctuation; Bengali and other composed scripts,
   swipe typing and autocorrect may not work yet. A hardware keyboard works.
-- Copy and paste work inside WordCraft only, not with other apps.
-- To open documents saved by other apps (in Download, say), allow *All files access* in
-  Settings › Apps › WordCraft.
+- Copy and paste work inside the app only, not with other apps.
 - No printing: export a PDF and print that.

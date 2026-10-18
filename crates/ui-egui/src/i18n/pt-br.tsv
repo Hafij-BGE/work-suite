@@ -2300,3 +2300,11 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Digite um tamanho em qualquer unidade, como 5 cm ou 300 px. O outro lado acompanha, e a imagem mantém as proporções.
 
 	Import…	Importar…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	Sobre o WorkSuite Writer
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	Um processador de texto gratuito e de código aberto para celulares e tablets, escrito em Rust.\nBaseado no WordCraft da equipe ArtCraft.
+	Browse this device…	Procurar neste dispositivo…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	Abrir um arquivo com o navegador do próprio aplicativo quando a caixa de diálogo de arquivos do sistema não aparecer.
+	Source code: github.com/Hafij-BGE/work-suite	Código-fonte: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft

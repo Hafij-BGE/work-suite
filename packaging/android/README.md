@@ -1,7 +1,9 @@
-# WordCraft for Android
+# WorkSuite Writer (WordCraft for Android)
 
-The Android app is the same editor as the desktop one (`crates/ui-egui`), started from
-`apps/wordcraft-android` in a `NativeActivity` (no Java code). It runs on Android 8 (API 26) or later,
+The Android app, *WorkSuite Writer*, is the same editor as the desktop WordCraft (`crates/ui-egui`),
+started from `apps/wordcraft-android` in a `NativeActivity`. A small Java activity
+(`app/src/main/java/…/WriterActivity.java`) adds what only Java can reach: Android's file picker
+and "Open with". The icon is drawn as Android vector drawables (`app/src/main/res`). It runs on Android 8 (API 26) or later,
 on phones and tablets; a tablet, or a phone held sideways, shows the most of the ribbon.
 
 ## What is different on Android
@@ -25,11 +27,13 @@ on phones and tablets; a tablet, or a phone held sideways, shows the most of the
 
 - **Keyboard.** The on-screen keyboard comes up when a tap puts the caret on the page. A
   hardware keyboard works with the usual shortcuts.
-- **Files.** Open, Save As and Export use WordCraft's own file browser, starting in
-  `Documents/WordCraft`. To open documents saved by other apps (in `Download`, say), allow
-  *All files access* in Settings › Apps › WordCraft.
+- **Files.** Open, Save As, Export and Insert › Pictures use Android's file picker (Downloads,
+  Documents, SD cards, Drive…), and documents open from file managers, mail and chat apps ("Open
+  with", "Share"). The editor works on a copy in the app's folder; every save is copied back to the
+  picked document within a couple of seconds, and when the app goes to the background. File › Open
+  › *Browse this device…* is the app's own browser, starting in `Documents/WorkSuite Writer`.
 - **Not on Android (yet):** printing (export a PDF and print that), the system clipboard (copy and
-  paste work inside WordCraft), the control channel and MCP bridge.
+  paste work inside the app), the control channel and MCP bridge.
 
 ## Building
 
@@ -40,9 +44,10 @@ rustup target add aarch64-linux-android      # and x86_64-linux-android for the 
 cargo install cargo-ndk
 export ANDROID_NDK_HOME=/path/to/android-ndk ANDROID_HOME=/path/to/android-sdk
 packaging/android/build.sh                   # or: build.sh release
-adb install dist/release/WordCraft-*-android-debug.apk
+adb install dist/release/WorkSuite-Writer-*-android-debug.apk
 ```
 
+The app's version is in [`VERSION`](VERSION), apart from WordCraft's.
 `WORDCRAFT_ANDROID_ABIS="arm64-v8a x86_64"` adds the emulator's CPU. A release build is signed with
 `WORDCRAFT_KEYSTORE`, `WORDCRAFT_KEYSTORE_PASSWORD`, `WORDCRAFT_KEY_ALIAS` and
 `WORDCRAFT_KEY_PASSWORD` when they are set, else with the debug key.
@@ -52,8 +57,8 @@ and keeps it as the run's artifact.
 
 ## Releasing
 
-Run the **Android release** workflow (Actions › Android release › Run workflow), which tags the
-commit `android-v<version in Cargo.toml>`, or push such a tag yourself. The workflow
+Bump [`VERSION`](VERSION), then run the **Android release** workflow (Actions › Android release ›
+Run workflow), which tags the commit `android-v<VERSION>`, or push such a tag yourself. The workflow
 (`.github/workflows/android-release.yml`) builds the release APK and publishes a GitHub Release with
 [`release-notes.md`](release-notes.md); update that file first.
 
@@ -71,7 +76,7 @@ then add the repository secrets `WORDCRAFT_KEYSTORE_BASE64`, `WORDCRAFT_KEYSTORE
 `WORDCRAFT_KEY_ALIAS` (`wordcraft`) and `WORDCRAFT_KEY_PASSWORD` (Settings › Secrets and variables ›
 Actions).
 
-Logs: `adb logcat -s WordCraft`.
+Logs: `adb logcat -s WorkSuiteWriter`.
 
 ## Known limits
 

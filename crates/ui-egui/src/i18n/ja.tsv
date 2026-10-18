@@ -2288,3 +2288,11 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	5 cm や 300 px など、任意の単位でサイズを入力します。もう一方の辺も合わせて変わるため、図の縦横比は保たれます。
 
 	Import…	インポート…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	WorkSuite Writer について
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	スマートフォンとタブレット向けの、Rust で書かれた無料のオープンソース ワープロです。\nArtCraft チームの WordCraft をもとにしています。
+	Browse this device…	このデバイスを参照…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	システムのファイル ダイアログが表示されないときは、アプリ独自のブラウザーでファイルを開きます。
+	Source code: github.com/Hafij-BGE/work-suite	ソース コード: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft

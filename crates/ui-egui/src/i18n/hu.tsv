@@ -2694,3 +2694,11 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Írj be egy méretet bármilyen mértékegységben, például 5 cm vagy 300 px. A másik oldal követi, így a kép megtartja az arányait.
 
 	Import…	Importálás…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	A WorkSuite Writer névjegye
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	Ingyenes, nyílt forráskódú szövegszerkesztő telefonokra és táblagépekre, Rust nyelven írva.\nAz ArtCraft csapat WordCraft programján alapul.
+	Browse this device…	Tallózás ezen az eszközön…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	Fájl megnyitása az alkalmazás saját böngészőjével, ha a rendszer fájlválasztója nem jelenik meg.
+	Source code: github.com/Hafij-BGE/work-suite	Forráskód: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft

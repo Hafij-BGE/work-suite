@@ -2687,3 +2687,11 @@
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Въведете размер в произволна единица, например 5 cm или 300 px. Другата страна се променя съответно, така че картината запазва пропорциите си.
 
 	Import…	Импортиране…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	За WorkSuite Writer
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	Безплатен текстообработващ софтуер с отворен код за телефони и таблети, написан на Rust.\nБазиран на WordCraft от екипа на ArtCraft.
+	Browse this device…	Преглед на това устройство…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	Отваряне на файл със собствения браузър на приложението, когато системният диалог за файлове не се появява.
+	Source code: github.com/Hafij-BGE/work-suite	Изходен код: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft

@@ -2700,3 +2700,11 @@ template	Letter	Lettre
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Tapez une taille dans n'importe quelle unité, par exemple 5 cm ou 300 px. L'autre côté suit, et l'image garde ses proportions.
 
 	Import…	Importer…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	À propos de WorkSuite Writer
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	Un traitement de texte gratuit et open source pour téléphones et tablettes, écrit en Rust.\nBasé sur WordCraft de l’équipe ArtCraft.
+	Browse this device…	Parcourir cet appareil…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	Ouvrir un fichier avec le navigateur intégré de l’application lorsque la boîte de dialogue de fichiers du système n’apparaît pas.
+	Source code: github.com/Hafij-BGE/work-suite	Code source: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft

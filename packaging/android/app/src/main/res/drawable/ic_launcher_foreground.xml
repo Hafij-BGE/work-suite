@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WorkSuite Writer launcher icon, foreground: a page with three lines of text and a folded
+     corner, and a pencil writing across it. Everything sits inside the 66 dp safe circle.
+     Original artwork for this repository (see ATTRIBUTION.md). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- The page. -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M38,32 a2,2 0 0 1 2,-2 h20 l10,10 v36 a2,2 0 0 1 -2,2 h-28 a2,2 0 0 1 -2,-2 z" />
+    <!-- Its folded corner. -->
+    <path android:fillColor="#BFE3DC" android:pathData="M60,30 v8 a2,2 0 0 0 2,2 h8 z" />
+    <!-- Lines of text. -->
+    <path android:strokeColor="#0B5D52" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M44,48 h20 M44,55 h20 M44,62 h11" />
+    <!-- The pencil: body, eraser and graphite tip. -->
+    <path android:fillColor="#F2B33D" android:pathData="M47,79 L50,70 L70,50 L76,56 L56,76 Z" />
+    <path android:fillColor="#D9962A" android:pathData="M50,70 L70,50 L73,53 L53,73 Z" />
+    <path android:fillColor="#E8684A"
+        android:pathData="M70,50 l2.6,-2.6 a2,2 0 0 1 2.8,0 l3.2,3.2 a2,2 0 0 1 0,2.8 L76,56 Z" />
+    <path android:fillColor="#2F3A38" android:pathData="M47,79 L48.3,75.1 L50.9,77.7 Z" />
+</vector>

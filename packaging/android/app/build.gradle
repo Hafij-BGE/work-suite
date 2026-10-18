@@ -21,12 +21,10 @@ android {
         versionName wordcraftVersion
     }
 
-    // build.sh puts the Rust library (lib/<abi>/libwordcraft_android.so) and the launcher icons
-    // (rendered from assets/app-icon) here; nothing in them is checked in.
+    // build.sh puts the Rust library (lib/<abi>/libwordcraft_android.so) here.
     sourceSets {
         main {
             jniLibs.srcDirs = ["build/rust/jniLibs"]
-            res.srcDirs += ["build/rust/res"]
         }
     }
 

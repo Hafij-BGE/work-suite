@@ -2695,3 +2695,11 @@ preview	Title	Örnek
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Herhangi bir birimde bir boyut yazın, örneğin 5 cm veya 300 px. Diğer kenar da buna uyar, böylece resim oranlarını korur.
 
 	Import…	İçe aktar…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	WorkSuite Writer Hakkında
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	Telefonlar ve tabletler için Rust ile yazılmış, ücretsiz ve açık kaynaklı bir kelime işlemci.\nArtCraft ekibinin WordCraft uygulamasına dayanır.
+	Browse this device…	Bu cihazda gözat…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	Sistem dosya penceresi açılmadığında dosyayı uygulamanın kendi gezginiyle açın.
+	Source code: github.com/Hafij-BGE/work-suite	Kaynak kodu: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft

@@ -58,6 +58,6 @@ jobs:
         run: packaging/android/build.sh debug
       - uses: actions/upload-artifact@v4
         with:
-          name: WordCraft-android
+          name: WorkSuite-Writer-android
           path: dist/release/*.apk
           if-no-files-found: error

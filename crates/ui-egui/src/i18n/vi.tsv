@@ -2738,3 +2738,11 @@ template	Letter	Thư
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Nhập kích thước theo đơn vị bất kỳ, ví dụ 5 cm hoặc 300 px. Cạnh còn lại thay đổi theo, nên ảnh giữ nguyên tỷ lệ.
 
 	Import…	Nhập…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	Giới thiệu WorkSuite Writer
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	Trình soạn thảo văn bản miễn phí, mã nguồn mở dành cho điện thoại và máy tính bảng, viết bằng Rust.\nDựa trên WordCraft của nhóm ArtCraft.
+	Browse this device…	Duyệt thiết bị này…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	Mở tệp bằng trình duyệt riêng của ứng dụng khi hộp thoại tệp của hệ thống không xuất hiện.
+	Source code: github.com/Hafij-BGE/work-suite	Mã nguồn: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft

@@ -10,7 +10,7 @@
 <h1 align="center">WordCraft</h1>
 
 > [!IMPORTANT]
-> **This copy is WordCraft adapted for Android** (phones and tablets), based on
+> **This copy is WorkSuite Writer: WordCraft adapted for Android** (phones and tablets), based on
 > [storytold/wordcraft](https://github.com/storytold/wordcraft). It keeps a lighter ribbon (File,
 > Home, Insert, Design, Layout), a shorter File menu, and adds touch gestures (drag to scroll,
 > long press for the menu, pinch to zoom). The app is in [`apps/wordcraft-android`](apps/wordcraft-android);

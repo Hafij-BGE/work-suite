@@ -2690,3 +2690,11 @@ preview	Title	Ukázka
 	Type a size in any unit, such as 5 cm or 300 px. The other side follows, so the picture keeps its proportions.	Zadejte velikost v libovolné jednotce, například 5 cm nebo 300 px. Druhá strana se přizpůsobí, takže obrázek zachová své proporce.
 
 	Import…	Importovat…
+# WorkSuite Writer (the Android app)
+	WorkSuite Writer	WorkSuite Writer
+	About WorkSuite Writer	O aplikaci WorkSuite Writer
+	A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team.	Bezplatný textový editor s otevřeným zdrojovým kódem pro telefony a tablety, napsaný v jazyce Rust.\nZaložený na WordCraftu od týmu ArtCraft.
+	Browse this device…	Procházet toto zařízení…
+	Open a file with the app's own browser when the system file dialog doesn't appear.	Otevřít soubor vlastním prohlížečem aplikace, když se systémové okno pro výběr souboru nezobrazí.
+	Source code: github.com/Hafij-BGE/work-suite	Zdrojový kód: github.com/Hafij-BGE/work-suite
+	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
