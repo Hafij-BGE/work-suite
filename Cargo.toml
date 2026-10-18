@@ -2,6 +2,9 @@
 resolver = "3"
 members = ["crates/*", "apps/*", "xtask"]
 default-members = ["crates/*", "apps/wordcraft", "apps/wordcraft-cli", "xtask"]
+# DeckCraft (presentations) and GridCraft (spreadsheets) keep their own workspaces; the Android
+# suite (apps/wordcraft-android) depends on their UI crates by path.
+exclude = ["deckcraft", "gridcraft"]
 
 [workspace.package]
 version = "0.8.0"
