@@ -1,0 +1,72 @@
+# Android release: on a tag `android-v<version>` (the version in Cargo.toml), build the release APK
+# (packaging/android/build.sh release) and publish it as a GitHub Release with
+# packaging/android/release-notes.md. Signed with the WORDCRAFT_KEYSTORE_* secrets when they are
+# set (see packaging/android/README.md), else with the runner's throwaway debug key.
+name: Android release
+
+on:
+  push:
+    tags: ["android-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+      - name: Install the SDK platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+      - name: Release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.WORDCRAFT_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "WORDCRAFT_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No WORDCRAFT_KEYSTORE_BASE64 secret: the APK is signed with a throwaway debug key."
+          fi
+      - name: Build the APK
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+          WORDCRAFT_KEYSTORE_PASSWORD: ${{ secrets.WORDCRAFT_KEYSTORE_PASSWORD }}
+          WORDCRAFT_KEY_ALIAS: ${{ secrets.WORDCRAFT_KEY_ALIAS }}
+          WORDCRAFT_KEY_PASSWORD: ${{ secrets.WORDCRAFT_KEY_PASSWORD }}
+        run: packaging/android/build.sh release
+      - name: Checksum
+        run: cd dist/release && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: WordCraft for Android ${{ github.ref_name }}
+          body_path: packaging/android/release-notes.md
+          prerelease: true
+          files: |
+            dist/release/*.apk
+            dist/release/SHA256SUMS.txt
+          fail_on_unmatched_files: true
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: WordCraft-android-release
+          path: dist/release/

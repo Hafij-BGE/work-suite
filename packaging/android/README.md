@@ -50,6 +50,27 @@ adb install dist/release/WordCraft-*-android-debug.apk
 The **Android** workflow (`.github/workflows/android.yml`) builds the debug APK on every change
 and keeps it as the run's artifact.
 
+## Releasing
+
+Push a tag `android-v<version>` (the version in `Cargo.toml`), for example
+`git tag android-v0.8.0 && git push origin android-v0.8.0`. The **Android release** workflow
+(`.github/workflows/android-release.yml`) builds the release APK and publishes a GitHub Release with
+[`release-notes.md`](release-notes.md); update that file first.
+
+Android only installs an update signed with the same key as the installed app. Without a key of
+your own, each release is signed with the build machine's throwaway debug key, so updating means
+uninstalling first. To sign with your own key, make one once (and keep it safe: losing it means no
+more updates):
+
+```sh
+keytool -genkeypair -v -keystore wordcraft-release.jks -alias wordcraft -keyalg RSA -keysize 4096 -validity 10000
+base64 -w0 wordcraft-release.jks   # the WORDCRAFT_KEYSTORE_BASE64 secret
+```
+
+then add the repository secrets `WORDCRAFT_KEYSTORE_BASE64`, `WORDCRAFT_KEYSTORE_PASSWORD`,
+`WORDCRAFT_KEY_ALIAS` (`wordcraft`) and `WORDCRAFT_KEY_PASSWORD` (Settings › Secrets and variables ›
+Actions).
+
 Logs: `adb logcat -s WordCraft`.
 
 ## Known limits
