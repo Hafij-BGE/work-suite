@@ -52,8 +52,8 @@ and keeps it as the run's artifact.
 
 ## Releasing
 
-Push a tag `android-v<version>` (the version in `Cargo.toml`), for example
-`git tag android-v0.8.0 && git push origin android-v0.8.0`. The **Android release** workflow
+Run the **Android release** workflow (Actions › Android release › Run workflow), which tags the
+commit `android-v<version in Cargo.toml>`, or push such a tag yourself. The workflow
 (`.github/workflows/android-release.yml`) builds the release APK and publishes a GitHub Release with
 [`release-notes.md`](release-notes.md); update that file first.
 
