@@ -1,7 +1,7 @@
 //! Screenshots of the suite without a GPU or a phone: runs a few frames headless and draws egui's
 //! output with a small software rasteriser, as a binary PPM image.
 //!
-//! `cargo run -p wordcraft-android --example suite_shot -- out.ppm [home|writer|slides|sheets] [dark|light] [width height scale]`
+//! `cargo run -p wordcraft-android --example suite_shot -- out.ppm [home|writer|slides|sheets] [dark|light] [width height scale] [ribbon tab]`
 //!
 //! The window has a 24-point status bar and a 16-point gesture bar, as a phone does.
 
@@ -31,6 +31,21 @@ fn main() {
     suite.set_insets(Some([0, (24.0 * ppp) as i32, 0, (16.0 * ppp) as i32, wp, hp]));
     if app.is_some() {
         suite.switch(&ctx, app);
+    }
+    // A ribbon tab to show, over a new document.
+    if let Some(tab) = args.get(6) {
+        if let Some(w) = &mut suite.writer {
+            let _ = w.word.run("file.new", serde_json::json!({}));
+            w.word.ui.backstage = false;
+            w.word.ui.tab = tab.clone();
+        }
+        if let Some(s) = &mut suite.slides {
+            let _ = s.run("file.new", serde_json::json!({}));
+            s.ui.tab = tab.clone();
+        }
+        if let Some(s) = &mut suite.sheets {
+            s.ui.ribbon_tab = tab.clone();
+        }
     }
     let mut textures: HashMap<TextureId, ([usize; 2], Vec<Color32>)> = HashMap::new();
     let mut last = None;

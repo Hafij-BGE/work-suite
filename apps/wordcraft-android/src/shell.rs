@@ -63,6 +63,10 @@ impl Shell {
         if self.word.ui.backstage || self.word.dialog.is_some() || !self.word.canvas.focused {
             return false;
         }
+        // Drawing with a pen (the Draw tab): a tap is a dot of ink, not a place to type.
+        if self.word.session.view.draw.mode != wordcraft_engine::cmd::draw::DrawMode::Select {
+            return false;
+        }
         let Some(page) = self.word.canvas.canvas_rect else { return false };
         ctx.input(|i| i.pointer.primary_clicked() && i.pointer.interact_pos().is_some_and(|p| page.contains(p)))
     }

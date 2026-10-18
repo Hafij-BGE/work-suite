@@ -151,10 +151,10 @@ fn contextual(app: &SlideApp) -> Vec<&'static str> {
     v
 }
 
-/// The tabs the Android suite keeps: what a presentation needs on a phone or tablet. Draw,
-/// Animations, Record, Review and View are left out (their commands still run from shortcuts and
-/// the command search).
-const TABS: [&str; 5] = ["Home", "Insert", "Design", "Transitions", "Slide Show"];
+/// The tabs the Android suite keeps: what a presentation needs on a phone or tablet, and Draw for
+/// a stylus. Animations, Record, Review and View are left out (their commands still run from
+/// shortcuts and the command search).
+const TABS: [&str; 6] = ["Home", "Insert", "Draw", "Design", "Transitions", "Slide Show"];
 
 /// Width of the » button that holds the tabs a narrow window has no room for.
 const MORE_TABS_W: f32 = 28.0;

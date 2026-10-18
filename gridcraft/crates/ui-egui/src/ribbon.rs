@@ -10,9 +10,10 @@ use crate::keytips::keytip_table;
 use crate::theme::{self, Tokens};
 use crate::widgets::{big_button, color_palette, icon_button, small_button, split_button, toggle_button};
 
-/// The tabs the Android suite keeps: what a spreadsheet needs on a phone or tablet. Draw, Review,
-/// View and Automate are left out (their commands still run from shortcuts and the command search).
-pub const TABS: &[&str] = &["Home", "Insert", "Page Layout", "Formulas", "Data"];
+/// The tabs the Android suite keeps: what a spreadsheet needs on a phone or tablet, and Draw for a
+/// stylus. Review, View and Automate are left out (their commands still run from shortcuts and the
+/// command search).
+pub const TABS: &[&str] = &["Home", "Insert", "Draw", "Page Layout", "Formulas", "Data"];
 
 /// macOS draws the window into the title bar (`with_fullsize_content_view`) and AppKit paints the
 /// traffic lights itself, centred in its standard 28 pt title-bar band. Moving them would take

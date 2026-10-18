@@ -13,8 +13,8 @@
 //! - **pinch** two fingers: zoom (the canvas reads egui's multi-touch zoom); the pointer is ignored
 //!   until every finger has lifted.
 //!
-//! Input that doesn't come from a touch (a mouse or a stylus egui reports as a mouse) is passed on
-//! untouched.
+//! Input that doesn't come from a touch (a mouse, or a stylus, which the Android build reports as a
+//! mouse: it hovers, clicks, selects and draws) is passed on untouched.
 
 use egui::{Event, Modifiers, MouseWheelUnit, PointerButton, Pos2, RawInput, TouchId, TouchPhase, Vec2};
 

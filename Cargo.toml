@@ -4,7 +4,9 @@ members = ["crates/*", "apps/*", "xtask"]
 default-members = ["crates/*", "apps/wordcraft", "apps/wordcraft-cli", "xtask"]
 # DeckCraft (presentations) and GridCraft (spreadsheets) keep their own workspaces; the Android
 # suite (apps/wordcraft-android) depends on their UI crates by path.
-exclude = ["deckcraft", "gridcraft"]
+# vendor/winit is winit with the Android stylus patch (see its PATCHED.md), used through
+# [patch.crates-io] below.
+exclude = ["deckcraft", "gridcraft", "vendor"]
 
 [workspace.package]
 version = "0.8.0"
@@ -106,4 +108,6 @@ debug = 0
 
 # Required by craft-pdf: the backend rejects writers that failed during unwinding.
 [patch.crates-io]
+# Android: a stylus works as a mouse (hover, side button) with palm rejection; see vendor/winit/PATCHED.md.
+winit = { path = "vendor/winit" }
 krilla = { git = "https://github.com/storytold/craft-libs", rev = "c3487320b2d1de657b860b3c8abb44e1f2b32bd8" }

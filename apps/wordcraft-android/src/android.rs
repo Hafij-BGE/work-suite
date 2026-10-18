@@ -16,7 +16,7 @@ use std::rc::Rc;
 use winit::platform::android::activity::AndroidApp;
 
 use crate::saf::Saf;
-use crate::suite::{Files, Picker, SUITE_NAME, Suite, SuitePaths};
+use crate::suite::{Files, Pen, Picker, SUITE_NAME, Suite, SuitePaths};
 
 /// Shared storage's Documents folder (the same path on every current Android device).
 const SHARED_DOCUMENTS: &str = "/storage/emulated/0/Documents";
@@ -113,6 +113,8 @@ impl eframe::App for App {
     }
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
         self.suite.set_insets(self.saf.as_ref().and_then(|s| s.insets()));
+        let pen = winit::platform::android::stylus();
+        self.suite.set_pen(Pen { touching: pen.touching, eraser: pen.eraser });
         if let Some(wait) = self.suite.raw_input(ctx, raw) {
             ctx.request_repaint_after_secs(wait as f32);
         }

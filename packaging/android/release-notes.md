@@ -5,6 +5,19 @@ one app, based on [WordCraft](https://github.com/storytold/wordcraft),
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.2: stylus support
+
+- **A pen works like a pen.** With a stylus (S Pen, USI or another active pen) the tip selects
+  text, picks cells and moves objects precisely, while fingers keep scrolling and zooming. The pen
+  hovers (buttons light up under it), and its side button opens the menu a right-click opens.
+- **Draw with it:** the **Draw** tab is back in Writer, Slides and Sheets: pick a pen, pencil or
+  highlighter and write or sketch on the page; fingers still scroll while a pen is picked.
+- **The eraser end erases** (on pens that have one), whatever tool is picked; the tool comes back
+  when you lift it.
+- **Palm rejection:** a hand resting on the screen while the pen is on or near it is ignored.
+- A mouse (or a keyboard cover's trackpad) now works as a mouse too: it hovers, and its right
+  button opens the menu.
+
 ## New in 0.9.1
 
 - **A file you open shows at once.** Opening from the home screen (or "Open with") no longer leaves
@@ -35,7 +48,7 @@ one app, based on [WordCraft](https://github.com/storytold/wordcraft),
 
 ## Install
 
-1. Download `WorkSuite-0.9.1-android-release.apk` below, on your phone.
+1. Download `WorkSuite-0.9.2-android-release.apk` below, on your phone.
 2. Open it, and allow installing from that app when Android asks.
 
 If an earlier preview (WordCraft or WorkSuite Writer) is installed, uninstall it first: each
@@ -50,3 +63,6 @@ For 64-bit ARM phones and tablets running Android 8 or later.
 - Saving a new presentation or workbook asks where to save it; once saved, Save writes back to it.
 - Copy and paste work inside the app only, not with other apps.
 - No printing: export a PDF and print that.
+- Pen strokes have the width you pick; they don't get thicker when you press harder. A passive
+  (capacitive, rubber-tipped) stylus is a finger to Android, so it scrolls like one.
+- On a phone, Writer's pens sit in the Draw tab's *Drawing Tools* menu (a tablet shows them all).

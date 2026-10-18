@@ -15,19 +15,26 @@ to the home screen, then puts the app in the background. The app draws edge to e
 controls clear of the system bars and the keyboard (insets from `WriterActivity.insets()`, applied
 as egui's safe area).
 
+A stylus works as a pen (`vendor/winit`, see its `PATCHED.md`: winit 0.30 reports a pen as a
+touch, so the suite patches it): the pen hovers, clicks, selects and drags as a mouse does while
+fingers scroll and zoom; its side button is the right button; a hand resting on the screen while
+the pen is near is ignored. The Draw tab (Writer, Slides, Sheets) picks a pen to write with, and
+the pen's eraser end erases whatever tool is picked (`suite.rs`, `eraser_end`).
+
 To look at the suite without a phone: `cargo run -p wordcraft-android --example suite_shot --
-out.ppm [home|writer|slides|sheets] [dark|light] [width height scale]` (a software renderer).
+out.ppm [home|writer|slides|sheets] [dark|light] [width height scale] [ribbon tab]` (a software
+renderer).
 
 DeckCraft and GridCraft keep their own Cargo workspaces (the root workspace excludes them); the
 Android crate depends on their UI crates by path.
 
 ## What is different on Android
 
-- **A lighter ribbon.** Writer: File, Home, Insert, Design and Layout (Draw, References, Mailings,
-  Review, View, Developer, Zotero and Help left out). Slides: Home, Insert, Design, Transitions and
-  Slide Show (Draw, Animations, Record, Review and View left out). Sheets: Home, Insert, Page
-  Layout, Formulas and Data (Draw, Review, View and Automate left out). Everything left out is  still reachable through keyboard shortcuts
-  and the command search.
+- **A lighter ribbon.** Writer: File, Home, Insert, Draw, Design and Layout (References, Mailings,
+  Review, View, Developer, Zotero and Help left out). Slides: Home, Insert, Draw, Design,
+  Transitions and Slide Show (Animations, Record, Review and View left out). Sheets: Home, Insert,
+  Draw, Page Layout, Formulas and Data (Review, View and Automate left out). Everything left out
+  is still reachable through keyboard shortcuts and the command search.
 - **A shorter File menu** in all three: Home, New, Open, Save, Save As, Export, Close and About
   (and, in Writer, Recover, only when there is something to recover). Print goes through Export › PDF.
 - **Touch.**

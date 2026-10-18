@@ -29,6 +29,7 @@ wordcraft-proof = { workspace = true }
 # The suite's other two apps, from their own workspaces (deckcraft/, gridcraft/).
 deckcraft-ui-egui = { path = "../../deckcraft/crates/ui-egui" }
 deckcraft-engine = { path = "../../deckcraft/crates/engine" }
+deckcraft-color = { path = "../../deckcraft/crates/color" }
 gridcraft-ui-egui = { path = "../../gridcraft/crates/ui-egui" }
 gridcraft-engine = { path = "../../gridcraft/crates/engine" }
 egui = { workspace = true }

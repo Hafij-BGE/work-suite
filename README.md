@@ -16,7 +16,8 @@
 > ([`gridcraft/`](gridcraft), from [storytold/gridcraft](https://github.com/storytold/gridcraft)),
 > based on [storytold/wordcraft](https://github.com/storytold/wordcraft). Each keeps a lighter
 > ribbon and a shorter File menu, with touch gestures (drag to scroll, long press for the menu,
-> pinch to zoom) and Android's file picker. The app is in [`apps/wordcraft-android`](apps/wordcraft-android);
+> pinch to zoom), stylus support (the pen selects and draws while fingers scroll; eraser end, side
+> button, palm rejection) and Android's file picker. The app is in [`apps/wordcraft-android`](apps/wordcraft-android);
 > how to build and install the APK, and what is different on Android, is in
 > [`packaging/android/README.md`](packaging/android/README.md). The rest of this README describes
 > upstream WordCraft.

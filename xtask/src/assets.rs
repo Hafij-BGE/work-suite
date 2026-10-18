@@ -13,8 +13,9 @@ const ASSET_EXT: &[&str] = &[
 ];
 const ASSET_DIRS: &[&str] = &["assets/", "docs/images/", "examples/"];
 /// The suite's other apps (their own workspaces), whose assets are listed in their own
-/// `ATTRIBUTION.md` and checked by their own `cargo xtask assets`.
-const OWN_ATTRIBUTION: &[&str] = &["deckcraft/", "gridcraft/"];
+/// `ATTRIBUTION.md` and checked by their own `cargo xtask assets`, and third-party code kept
+/// whole under its own licence (`vendor/`).
+const OWN_ATTRIBUTION: &[&str] = &["deckcraft/", "gridcraft/", "vendor/"];
 
 pub fn is_asset(path: &str) -> bool {
     if OWN_ATTRIBUTION.iter().any(|d| path.starts_with(d)) {

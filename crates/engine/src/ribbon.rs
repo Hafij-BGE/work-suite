@@ -16,10 +16,10 @@ use crate::Registry;
 /// The ribbon's tabs in their default order. `File` opens Backstage: it is always first and
 /// isn't part of the customizable list.
 ///
-/// The Android build keeps the tabs used every day on a phone or tablet; Draw, References,
-/// Mailings, Review, View, Developer, Zotero and Help are left out (their commands stay in the
-/// registry, so shortcuts, the command search, the CLI and MCP still reach them).
-pub const TABS: [&str; 5] = ["File", "Home", "Insert", "Design", "Layout"];
+/// The Android build keeps the tabs used every day on a phone or tablet, and Draw for a stylus;
+/// References, Mailings, Review, View, Developer, Zotero and Help are left out (their commands
+/// stay in the registry, so shortcuts, the command search, the CLI and MCP still reach them).
+pub const TABS: [&str; 6] = ["File", "Home", "Insert", "Draw", "Design", "Layout"];
 /// Tabs that come up with the selection; custom tabs can't take their names.
 pub const CONTEXTUAL_TABS: [&str; 7] =
     ["Table Design", "Table Layout", "Picture Format", "Shape Format", "Equation", "Chart Design", "SmartArt Design"];

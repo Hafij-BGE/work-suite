@@ -163,6 +163,24 @@ impl Picker {
     }
 }
 
+/// What a stylus is doing, from the host (on Android, `winit::platform::android::stylus()`; the
+/// patched winit already makes the pen hover, click and drag as a mouse).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Pen {
+    /// The pen touches the screen.
+    pub touching: bool,
+    /// Its eraser end is the one near the screen.
+    pub eraser: bool,
+}
+
+/// The tool an app had before the pen's eraser end took over.
+#[derive(Clone, Debug, PartialEq)]
+enum Tool {
+    Writer(wordcraft_engine::cmd::draw::DrawMode),
+    Slides(deckcraft_engine::ToolKind),
+    Sheets(String),
+}
+
 /// Where the suite keeps things on the device.
 #[derive(Clone, Debug, Default)]
 pub struct SuitePaths {
@@ -197,6 +215,11 @@ pub struct Suite {
     inner: Option<Rect>,
     /// Back was pressed on the home screen: the host sends the app to the background.
     leave: bool,
+    /// The stylus, and the tool its eraser end replaced while it touches (and whether the frame
+    /// with its release has gone by).
+    pen: Pen,
+    erasing: Option<Tool>,
+    eraser_lifted: bool,
     /// The colour behind the system bars, and whether it is dark (for their icons).
     pub chrome: Color32,
     pub chrome_dark: bool,
@@ -218,6 +241,9 @@ impl Suite {
             full: None,
             inner: None,
             leave: false,
+            pen: Pen::default(),
+            erasing: None,
+            eraser_lifted: false,
             chrome: Color32::BLACK,
             chrome_dark: true,
         }
@@ -226,6 +252,70 @@ impl Suite {
     /// What covers the window's edges, from the host: kept clear from the next frame on.
     pub fn set_insets(&mut self, px: Option<[i32; 6]>) {
         self.insets_px = px;
+    }
+
+    /// What the stylus is doing, from the host: read before the frame's input.
+    pub fn set_pen(&mut self, pen: Pen) {
+        self.pen = pen;
+    }
+
+    /// The pen's eraser end erases in the app showing, whatever tool is picked: its eraser comes
+    /// up when the eraser end touches, and the tool goes back a frame after it lifts (the frame
+    /// with the release still erases).
+    fn eraser_end(&mut self, ctx: &egui::Context) {
+        if self.pen.touching && self.pen.eraser && self.erasing.is_none() {
+            self.erasing = self.active.and_then(|kind| self.swap_tool(kind, None));
+            self.eraser_lifted = false;
+        } else if !self.pen.touching && self.erasing.is_some() {
+            if self.eraser_lifted {
+                if let Some(tool) = self.erasing.take() {
+                    let kind = match &tool {
+                        Tool::Writer(_) => AppKind::Writer,
+                        Tool::Slides(_) => AppKind::Slides,
+                        Tool::Sheets(_) => AppKind::Sheets,
+                    };
+                    self.swap_tool(kind, Some(tool));
+                }
+                self.eraser_lifted = false;
+            } else {
+                self.eraser_lifted = true;
+                ctx.request_repaint();
+            }
+        }
+    }
+
+    /// Give `kind` its eraser (`to` is `None`) or the tool `to`; returns the tool it had.
+    fn swap_tool(&mut self, kind: AppKind, to: Option<Tool>) -> Option<Tool> {
+        use wordcraft_engine::cmd::draw::DrawMode;
+        match kind {
+            AppKind::Writer => {
+                let draw = &mut self.writer.as_mut()?.word.session.view.draw;
+                let had = Tool::Writer(draw.mode);
+                draw.mode = match to {
+                    Some(Tool::Writer(mode)) => mode,
+                    _ => DrawMode::Eraser,
+                };
+                Some(had)
+            }
+            AppKind::Slides => {
+                let s = self.slides.as_mut()?;
+                let had = Tool::Slides(s.session.tool.kind.clone());
+                s.session.set_tool(match to {
+                    Some(Tool::Slides(tool)) => tool,
+                    _ => deckcraft_engine::ToolKind::Ink { mode: "eraser".into(), color: deckcraft_color::Rgba::BLACK, width: 2.0 },
+                });
+                Some(had)
+            }
+            AppKind::Sheets => {
+                let s = self.sheets.as_mut()?;
+                let had = Tool::Sheets(s.session.draw_tool.clone());
+                s.session.draw_tool = match to {
+                    Some(Tool::Sheets(tool)) => tool,
+                    _ => "eraser".into(),
+                };
+                Some(had)
+            }
+        }
     }
 
     /// Whether Back was pressed on the home screen since the last call.
@@ -414,6 +504,7 @@ impl Suite {
     /// see a long press, if one is.
     pub fn raw_input(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) -> Option<f64> {
         self.keep_clear(raw);
+        self.eraser_end(ctx);
         if take_back(raw) {
             self.back(ctx, raw);
         }
@@ -1170,6 +1261,58 @@ mod tests {
         let mut raw = back();
         s.raw_input(&ctx, &mut raw);
         assert_eq!(s.active, None);
+    }
+
+    /// The pen's eraser end erases in every app, whatever tool was picked, and the tool comes back
+    /// a frame after the pen lifts.
+    #[test]
+    fn the_eraser_end_of_a_pen_erases_then_gives_the_tool_back() {
+        use wordcraft_engine::cmd::draw::DrawMode;
+        let ctx = egui::Context::default();
+        let (mut s, _) = suite(true);
+        let window = Rect::from_min_size(pos2(0.0, 0.0), vec2(800.0, 900.0));
+        let erase = Pen { touching: true, eraser: true };
+        let lift = Pen { touching: false, eraser: true };
+        // Writer, drawing with its pen.
+        s.open_in_app(&ctx, &write_temp("pen.txt", "Ink"));
+        s.writer.as_mut().unwrap().word.run("draw.pen", json!({})).unwrap();
+        let pen = s.writer.as_ref().unwrap().word.session.view.draw.mode;
+        assert!(matches!(pen, DrawMode::Pen(_)));
+        for (state, want) in [(erase, DrawMode::Eraser), (erase, DrawMode::Eraser), (lift, DrawMode::Eraser), (lift, pen)] {
+            s.set_pen(state);
+            frames_with(&ctx, &mut s, 1, window);
+            assert_eq!(s.writer.as_ref().unwrap().word.session.view.draw.mode, want, "{state:?}");
+        }
+        // Slides, with the selection tool: its eraser, then the selection tool again.
+        s.switch(&ctx, Some(AppKind::Slides));
+        s.slides.as_mut().unwrap().run("file.new", json!({})).unwrap();
+        frames_with(&ctx, &mut s, 2, window);
+        s.set_pen(erase);
+        frames_with(&ctx, &mut s, 1, window);
+        assert!(matches!(&s.slides.as_ref().unwrap().session.tool.kind, deckcraft_engine::ToolKind::Ink { mode, .. } if mode == "eraser"));
+        s.set_pen(lift);
+        frames_with(&ctx, &mut s, 2, window);
+        assert_eq!(s.slides.as_ref().unwrap().session.tool.kind, deckcraft_engine::ToolKind::Select);
+        // Sheets.
+        s.switch(&ctx, Some(AppKind::Sheets));
+        frames_with(&ctx, &mut s, 2, window);
+        s.set_pen(erase);
+        frames_with(&ctx, &mut s, 1, window);
+        assert_eq!(s.sheets.as_ref().unwrap().session.draw_tool, "eraser");
+        s.set_pen(lift);
+        frames_with(&ctx, &mut s, 2, window);
+        assert_eq!(s.sheets.as_ref().unwrap().session.draw_tool, "");
+        // The pen's ordinary tip changes nothing.
+        s.set_pen(Pen { touching: true, eraser: false });
+        frames_with(&ctx, &mut s, 1, window);
+        assert_eq!(s.sheets.as_ref().unwrap().session.draw_tool, "");
+    }
+
+    fn write_temp(name: &str, text: &str) -> String {
+        let dir = temp(name);
+        let path = dir.join(name);
+        std::fs::write(&path, text).unwrap();
+        path.to_string_lossy().into_owned()
     }
 
     #[test]

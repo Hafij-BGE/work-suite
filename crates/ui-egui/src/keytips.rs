@@ -65,9 +65,9 @@ impl Target {
     }
 }
 
-/// Word's tab letters, as Word for Windows shows them after Alt (File F, Design G), for the tabs
-/// the Android build keeps. File opens the Backstage.
-const TAB_LETTERS: [(&str, &str); 5] = [("File", "F"), ("Home", "H"), ("Insert", "N"), ("Design", "G"), ("Layout", "P")];
+/// Word's tab letters, as Word for Windows shows them after Alt (File F, Draw D, Design G), for
+/// the tabs the Android build keeps. File opens the Backstage.
+const TAB_LETTERS: [(&str, &str); 6] = [("File", "F"), ("Home", "H"), ("Insert", "N"), ("Draw", "D"), ("Design", "G"), ("Layout", "P")];
 
 /// Word's contextual table tabs take two letters (Alt, J, T and Alt, J, L), shown in a table.
 const TABLE_TAB_LETTERS: [(&str, &str); 2] = [("Table Design", "JT"), ("Table Layout", "JL")];
