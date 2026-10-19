@@ -2372,7 +2372,10 @@ fn break_lines(pl: &mut ParaLayout, env: &ParaEnv, mark_style: u32, level: Optio
                 lab.x += shift;
             }
         }
-        let justify = display.is_none() && ((rp.align == Align::Justify && end == LineEnd::Wrap) || rp.align == Align::Distribute);
+        // Word stretches a justified line that ends with a line break (Shift+Enter) as it does a
+        // wrapped one, unless the document asks it not to (`doNotExpandShiftReturn`).
+        let expands = end == LineEnd::Wrap || (end == LineEnd::LineBreak && !env.doc.settings.no_expand_shift_return);
+        let justify = display.is_none() && ((rp.align == Align::Justify && expands) || rp.align == Align::Distribute);
         // A line that only fits with shrunk spaces is shrunk, the last line of the paragraph too.
         let shrink = display.is_none() && shrink_spaces && slack < 0.0 && last_tab.is_none();
         if shrink {

@@ -3303,6 +3303,21 @@ fn roman_fonts_are_read_from_the_font_table() {
     assert_eq!(d.settings.roman_fonts, ["Brand Serif"]);
 }
 
+/// `w:doNotExpandShiftReturn` in the settings' `w:compat`: lines ending with Shift+Enter keep their
+/// spaces; read and written back.
+#[test]
+fn do_not_expand_shift_return_is_read_and_kept() {
+    let settings = |compat: &str| {
+        let s = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings {W_NS}><w:compat>{compat}</w:compat></w:settings>"#);
+        let rels = [("rId9", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings", "settings.xml")];
+        let d = wordcraft_docx::read(&docx("<w:p/>", &rels, &[("word/settings.xml", &s)])).unwrap();
+        let again = wordcraft_docx::read(&wordcraft_docx::write(&d).unwrap()).unwrap();
+        (d.settings.no_expand_shift_return, again.settings.no_expand_shift_return)
+    };
+    assert_eq!(settings("<w:doNotExpandShiftReturn/>"), (true, true));
+    assert_eq!(settings(""), (false, false));
+}
+
 /// `w:doNotUseHTMLParagraphAutoSpacing` in the settings' `w:compat`: paragraph spacing adds up.
 #[test]
 fn html_auto_spacing_off_is_read_and_kept() {

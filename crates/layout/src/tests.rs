@@ -3843,6 +3843,40 @@ fn justified_lines_shrink_spaces_in_word_2013_mode() {
     }
 }
 
+/// Word stretches a justified line that ends with a line break (Shift+Enter) to the margin, as it
+/// does a wrapped line; `doNotExpandShiftReturn` keeps it as typed. The paragraph's last line is
+/// never stretched.
+#[test]
+fn justified_lines_ending_with_shift_enter_stretch_like_word() {
+    let text = "To the Selection Committee, International PhD Program\nGerman Cancer Research Center (DKFZ), Heidelberg";
+    let ends = |no_expand: bool| {
+        let mut d = Document::new();
+        d.body = vec![wordcraft_doc::para_block(wordcraft_doc::Paragraph::with_text(text, Default::default()))];
+        d.settings.no_expand_shift_return = no_expand;
+        d.format_paragraphs(&Pos::body(0, 0), &Pos::body(0, 0), &|p| p.align = Some(Align::Justify)).unwrap();
+        let l = lay(&d);
+        let mut ends = Vec::new();
+        for p in &l.pages {
+            for it in &p.items {
+                if let Placed::Lines { para, l0, l1, x, .. } = it {
+                    for li in *l0..*l1 {
+                        let line = &para.lines[li];
+                        let content = text[line.start..line.stop].trim_end().len();
+                        ends.push(para.x_of(li, line.start + content).unwrap() + x);
+                    }
+                }
+            }
+        }
+        ends
+    };
+    let word = ends(false);
+    assert_eq!(word.len(), 2);
+    assert!((word[0] - 540.0).abs() < 0.05, "the line before Shift+Enter reaches the margin: {}", word[0]);
+    assert!(word[1] < 500.0, "the last line keeps its spaces: {}", word[1]);
+    let kept = ends(true);
+    assert!(kept[0] < 500.0, "doNotExpandShiftReturn keeps the line as typed: {}", kept[0]);
+}
+
 #[test]
 fn space_shrinking_is_only_for_justified_text() {
     let text = "We tie the spend to a pipe and to the books, so it is in an ad hoc view of all of it. ".repeat(40);
