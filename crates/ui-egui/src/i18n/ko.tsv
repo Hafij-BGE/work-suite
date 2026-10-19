@@ -2551,3 +2551,8 @@ preview	Title	제목
 	Source code: github.com/Hafij-BGE/work-suite	소스 코드: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	WorkSuite의 일부, 제작: Md Hafijur Rahman.
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} 설치 안 됨
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	{font} 글꼴이 설치되어 있지 않아 텍스트가 {used}(으)로 표시됩니다. 줄과 페이지가 Word와 다르게 나뉠 수 있습니다.
+	Click to install it on this computer.	클릭하면 이 컴퓨터에 설치합니다.
+	Install from Windows on this PC	이 PC의 Windows에서 설치

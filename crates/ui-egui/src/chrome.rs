@@ -483,6 +483,32 @@ pub fn status_bar(app: &mut WordApp, ui: &mut Ui) {
                 if app.session.sel.focus.story != StoryRef::Body && !crate::canvas::in_text_box(app) {
                     st(ui, tl!("Editing header/footer"));
                 }
+                // Text at the caret in a font that isn't installed: say so while it's there; a click
+                // offers to install it on this computer (from a Windows installation on this PC, or
+                // from font files).
+                if let Some((font, used)) = crate::ribbon::caret_missing_font(app) {
+                    let label = crate::i18n::fmt(tl!("{font} not installed"), &[("font", &font)]);
+                    let tip = format!(
+                        "{}\n{}",
+                        crate::i18n::fmt(
+                            tl!("{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word."),
+                            &[("font", &font), ("used", &used)],
+                        ),
+                        tl!("Click to install it on this computer.")
+                    );
+                    let resp = st(ui, &label).on_hover_text(tip);
+                    egui::Popup::menu(&resp).show(|ui| {
+                        ui.set_min_width(240.0);
+                        // Looked for only while the menu is open.
+                        #[cfg(not(target_arch = "wasm32"))]
+                        if !wordcraft_fonts::windows_font_dirs().is_empty() && ui.button(tl!("Install from Windows on this PC")).clicked() {
+                            let _ = app.run("font.add", json!({"windows": true}));
+                        }
+                        if ui.button(tl!("Add Font…")).clicked() {
+                            let _ = app.run("font.add", json!({}));
+                        }
+                    });
+                }
                 // The language at the caret; a click sets the proofing language (Review › Language).
                 let lang = crate::ribbon::caret_language(app);
                 let missing = crate::ribbon::caret_missing_dictionary(app);
@@ -512,9 +538,6 @@ pub fn status_bar(app: &mut WordApp, ui: &mut Ui) {
                 });
                 if app.session.doc.settings.track_changes {
                     st(ui, tl!("Track Changes: On"));
-                }
-                if app.session.prefs.overtype && st(ui, tl!("Overtype")).on_hover_text(tl!("Click to switch back to inserting")).clicked() {
-                    let _ = app.run("text.overtype", json!({"value": false}));
                 }
                 if let Some((msg, at)) = &app.status_msg
                     && crate::now_ms() - at < 6000.0

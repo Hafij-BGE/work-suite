@@ -413,6 +413,11 @@ fn run<S: AsRef<OsStr>>(args: &[S]) -> Result<(), Failure> {
             };
             r.map_err(|e| e.to_string())?;
             eprintln!("wrote {o}");
+            // Say so when the document's fonts aren't installed: the pages are drawn with
+            // substitutes, so they can break differently from Word's.
+            if let Some(n) = wordcraft_engine::cmd::font::missing_fonts_notice(&mut s) {
+                eprintln!("warning: {n}");
+            }
             Ok(())
         }
         "info" => {

@@ -2704,3 +2704,8 @@ preview	Title	Örnek
 	Source code: github.com/Hafij-BGE/work-suite	Kaynak kodu: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	WorkSuite’in bir parçası; Md Hafijur Rahman tarafından yapıldı.
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} yüklü değil
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	{font} yüklü olmadığından metin {used} ile gösteriliyor. Satırlar ve sayfalar Word'dekinden farklı bölünebilir.
+	Click to install it on this computer.	Bu bilgisayara yüklemek için tıklayın.
+	Install from Windows on this PC	Bu bilgisayardaki Windows'tan yükle

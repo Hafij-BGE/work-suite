@@ -498,6 +498,39 @@ pub struct DocLayout {
     pub text_boxes: usize,
 }
 
+/// A font the document asks for that isn't installed, and the family drawn in its place.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MissingFont {
+    /// The family the text is set in, as the document names it (kept, as Word keeps it).
+    pub requested: String,
+    /// The installed family its text is drawn with.
+    pub shown_with: String,
+}
+
+/// The fonts `layout`'s text is set in that aren't installed, each once, in the order first met,
+/// with the family shown instead (Word's substitutes, [`wordcraft_fonts::word::resolve`]). A
+/// substitute's metrics differ, so these documents can break lines and pages differently from Word.
+pub fn missing_fonts(doc: &Document, layout: &DocLayout) -> Vec<MissingFont> {
+    let mut out: Vec<MissingFont> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for page in &layout.pages {
+        for item in &page.items {
+            let Placed::Lines { para, .. } = item else { continue };
+            for st in &para.styles {
+                let font = st.rc.font.trim();
+                if font.is_empty() || !seen.insert(font.to_lowercase()) {
+                    continue;
+                }
+                let r = wordcraft_fonts::word::resolve(para::lookup_family(doc, font), false, false);
+                if r.substituted {
+                    out.push(MissingFont { requested: font.to_string(), shown_with: r.face.family.clone() });
+                }
+            }
+        }
+    }
+    out
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Key {
     rev: u64,

@@ -772,6 +772,24 @@ fn caret_lang_tag(app: &WordApp) -> Option<String> {
 }
 
 /// The Hunspell dictionary the caret's language needs but doesn't have (`pl_PL`), if any (#1167).
+/// The family `font` is drawn with when it isn't installed (Word's substitute), else `None`.
+/// Word shows the missing name in the font box too; the tooltip and the status bar say it's missing.
+pub(crate) fn missing_font_substitute(font: &str) -> Option<String> {
+    let font = font.trim();
+    if font.is_empty() {
+        return None;
+    }
+    let r = wordcraft_fonts::word::resolve(font, false, false);
+    r.substituted.then(|| r.face.family.clone())
+}
+
+/// The caret's font when it isn't installed, with its substitute: (font, shown with).
+pub(crate) fn caret_missing_font(app: &mut WordApp) -> Option<(String, String)> {
+    let st = app.session.run("format.state", &json!({})).ok()?;
+    let font = st.get("font").and_then(Value::as_str)?.to_string();
+    missing_font_substitute(&font).map(|used| (font, used))
+}
+
 pub(crate) fn caret_missing_dictionary(app: &WordApp) -> Option<&'static str> {
     wordcraft_engine::proof::missing_dictionary(caret_lang_tag(app).as_deref())
 }
@@ -928,7 +946,14 @@ fn home(app: &mut WordApp, ui: &mut Ui) {
                 let fams = app.previews.families();
                 let recent: Vec<String> = app.ui.recent_fonts.iter().map(|f| app.previews.font_shown(f)).collect();
                 let prev = app.previews.font_preview_fn();
-                if let Some(f) = crate::widgets::font_combo_with_recent_hint(ui, "font", 150.0, &font, &fams, &recent, Some(&*prev), tl!("Font")) {
+                let tip = match missing_font_substitute(&font) {
+                    Some(used) => crate::i18n::fmt(
+                        tl!("{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word."),
+                        &[("font", &font), ("used", &used)],
+                    ),
+                    None => tl!("Font").to_string(),
+                };
+                if let Some(f) = crate::widgets::font_combo_with_recent_hint(ui, "font", 150.0, &font, &fams, &recent, Some(&*prev), &tip) {
                     let _ = if f == crate::widgets::ADD_FONT {
                         app.run("font.add", json!({}))
                     } else if f == crate::widgets::LOAD_SYSTEM_FONTS {

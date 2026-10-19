@@ -18,6 +18,8 @@ pub use fontdb::{
     FALLBACK_FAMILY, FONT_FILE_EXTS, FaceRef, FontDb, FontFace, FontFormat, Installed, LocalName, MAX_FONT_FILE_BYTES, UserFont, UserFontError,
     base_style, bundled, decode_font_file, is_font_file_name, name_language_matches, sniff, system_font_dirs,
 };
+#[cfg(not(target_arch = "wasm32"))]
+pub use fontdb::{font_file_families, font_files_under, windows_font_dirs, windows_font_dirs_under};
 pub use harfrust::Feature;
 use harfrust::{Direction, ShapeOptions, Tag, UnicodeBuffer};
 pub use kurbo::BezPath;

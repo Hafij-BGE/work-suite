@@ -2307,3 +2307,8 @@
 	Source code: github.com/Hafij-BGE/work-suite	Izvorni kod: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	Deo paketa WorkSuite, napravio Md Hafijur Rahman.
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} nije instaliran
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	Font {font} nije instaliran, pa se tekst prikazuje fontom {used}. Redovi i stranice mogu da se prelaze drugačije nego u Word-u.
+	Click to install it on this computer.	Kliknite da biste ga instalirali na ovom računaru.
+	Install from Windows on this PC	Instaliraj iz Windows-a na ovom računaru

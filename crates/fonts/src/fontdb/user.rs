@@ -32,6 +32,90 @@ const STORED_EXTS: &[&str] = &["ttf", "otf", "ttc", "otc"];
 /// Extensions a font file the user picks or drops may have.
 pub const FONT_FILE_EXTS: &[&str] = &["ttf", "otf", "ttc", "otc", "woff", "woff2"];
 
+/// Most font files [`font_files_under`] lists.
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_SCANNED_FILES: usize = 5000;
+
+/// The font files under `dirs` (subfolders too, each folder once), at most a few thousand,
+/// sorted by path. Only names are checked: the caller reads and checks each file.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn font_files_under(dirs: &[PathBuf]) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack: Vec<PathBuf> = dirs.to_vec();
+    let mut visited = std::collections::HashSet::new();
+    while let Some(d) = stack.pop() {
+        if out.len() >= MAX_SCANNED_FILES || !visited.insert(std::fs::canonicalize(&d).unwrap_or_else(|_| d.clone())) {
+            continue;
+        }
+        let Ok(rd) = std::fs::read_dir(&d) else { continue };
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.to_str().is_some_and(is_font_file_name) && out.len() < MAX_SCANNED_FILES {
+                out.push(p);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// The folders of fonts belonging to Windows installations on this computer: on Linux and BSD a
+/// Windows partition mounted under `/mnt`, `/media` or `/run/media` (as on a dual-boot PC), on
+/// macOS one under `/Volumes`; on Windows itself, the current user's Microsoft 365 cloud fonts.
+/// Each partition gives its `Windows/Fonts` folder, and per user the fonts installed for that
+/// user and the cloud fonts Microsoft 365 downloaded (Aptos and others). The fonts stay where
+/// they are; adding one copies it into the user font folder on this computer only.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn windows_font_dirs() -> Vec<PathBuf> {
+    if cfg!(windows) {
+        let cloud = std::env::var_os("LOCALAPPDATA").map(|l| PathBuf::from(l).join("Microsoft").join("FontCache").join("4").join("CloudFonts"));
+        return cloud.filter(|c| c.is_dir()).into_iter().collect();
+    }
+    let mut parents: Vec<PathBuf> =
+        if cfg!(target_os = "macos") { vec!["/Volumes".into()] } else { vec!["/mnt".into(), "/media".into(), "/run/media".into()] };
+    if let Some(u) = std::env::var_os("USER") {
+        parents.extend([Path::new("/media").join(&u), Path::new("/run/media").join(&u)]);
+    }
+    windows_font_dirs_under(&parents)
+}
+
+/// [`windows_font_dirs`] for Windows partitions that are, or are mounted directly in, `parents`.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn windows_font_dirs_under(parents: &[PathBuf]) -> Vec<PathBuf> {
+    fn add_partition(root: &Path, out: &mut Vec<PathBuf>) {
+        let fonts = root.join("Windows").join("Fonts");
+        if fonts.is_dir() {
+            out.push(fonts);
+        }
+        let Ok(users) = std::fs::read_dir(root.join("Users")) else { return };
+        let mut users: Vec<PathBuf> = users.flatten().map(|u| u.path()).collect();
+        users.sort();
+        for u in users {
+            let local = u.join("AppData").join("Local").join("Microsoft");
+            for sub in [local.join("Windows").join("Fonts"), local.join("FontCache").join("4").join("CloudFonts")] {
+                if sub.is_dir() {
+                    out.push(sub);
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for parent in parents {
+        // The mount point itself may be the partition (`/mnt` with Windows on it).
+        add_partition(parent, &mut out);
+        let Ok(rd) = std::fs::read_dir(parent) else { continue };
+        let mut subs: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+        subs.sort();
+        for p in subs {
+            add_partition(&p, &mut out);
+        }
+    }
+    out.dedup();
+    out
+}
+
 /// Is `name` (a file name or path) named like a font file?
 pub fn is_font_file_name(name: &str) -> bool {
     let ext = name.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase());
@@ -710,5 +794,24 @@ pub(crate) mod tests {
         assert_eq!(stored_name("", &ttf), "font.ttf");
         assert_eq!(stored_name("-rf.otf", b"OTTO"), "font-rf.otf");
         assert_eq!(unique_name("a.ttf", |n| n == "a.ttf" || n == "a-2.ttf"), "a-3.ttf");
+    }
+
+    /// A dual-boot Windows partition mounted under a parent folder gives its Windows/Fonts and,
+    /// per user, the user-installed and Microsoft 365 cloud font folders; other folders give none.
+    #[test]
+    fn windows_font_folders_are_found_on_a_mounted_partition() {
+        let root = std::env::temp_dir().join(format!("wc-winfonts-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let part = root.join("C_drive");
+        let cloud = part.join("Users/Ana/AppData/Local/Microsoft/FontCache/4/CloudFonts/Aptos");
+        for d in [part.join("Windows/Fonts"), cloud.clone(), part.join("Users/Ben/Documents"), root.join("data/Music")] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        std::fs::write(cloud.join("123.ttf"), b"x").unwrap();
+        std::fs::write(cloud.join("notes.txt"), b"x").unwrap();
+        let dirs = windows_font_dirs_under(std::slice::from_ref(&root));
+        assert_eq!(dirs, vec![part.join("Windows/Fonts"), part.join("Users/Ana/AppData/Local/Microsoft/FontCache/4/CloudFonts")]);
+        assert_eq!(font_files_under(&dirs), vec![cloud.join("123.ttf")]);
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

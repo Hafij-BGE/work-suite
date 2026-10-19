@@ -41,17 +41,22 @@ pub fn run(args: &[&str]) -> Result<(), String> {
     let [reference, test, out] = pos.as_slice() else {
         return Err("usage: cargo xtask visual-diff REF.pdf TEST.pdf OUTDIR [--private] [--dpi N]".into());
     };
-    let out = PathBuf::from(out);
-    std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+    let report = run_one(Path::new(reference), Path::new(test), Path::new(out), dpi, private)?;
+    println!("{}", report["summary"]);
+    Ok(())
+}
+
+/// Compares two PDFs into `out` (`result.json`, diff maps) and returns the report.
+pub fn run_one(reference: &Path, test: &Path, out: &Path, dpi: u32, private: bool) -> Result<Value, String> {
+    std::fs::create_dir_all(out).map_err(|e| format!("{}: {e}", out.display()))?;
     let tmp = out.join(".visual-diff-tmp");
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
-    let result = compare(Path::new(reference), Path::new(test), &out, &tmp, dpi, private);
+    let result = compare(reference, test, out, &tmp, dpi, private);
     let _ = std::fs::remove_dir_all(&tmp);
     let report = result?;
     std::fs::write(out.join("result.json"), serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    println!("{}", report["summary"]);
-    Ok(())
+    Ok(report)
 }
 
 fn compare(reference: &Path, test: &Path, out: &Path, tmp: &Path, dpi: u32, private: bool) -> Result<Value, String> {
@@ -70,6 +75,7 @@ fn compare(reference: &Path, test: &Path, out: &Path, tmp: &Path, dpi: u32, priv
     let mut pages = Vec::new();
     let mut dx_diffs = Vec::new();
     let mut ssims = Vec::new();
+    let mut all_dy = Vec::new();
     for p in 0..rp.len().max(tp.len()) {
         let mut row = json!({"page": p + 1});
         if let (Some(a), Some(b)) = (rp.get(p), tp.get(p)) {
@@ -90,6 +96,7 @@ fn compare(reference: &Path, test: &Path, out: &Path, tmp: &Path, dpi: u32, priv
         }
         let mut dys: Vec<f64> = same.iter().filter(|&&(_, j)| l2[j].page == p).map(|&(i, j)| (l1[i].y - l2[j].y).abs()).collect();
         dys.sort_by(f64::total_cmp);
+        all_dy.extend_from_slice(&dys);
         if let Some(m) = dys.get(dys.len() / 2) {
             row["dy"] = json!(round(*m, 1));
         }
@@ -131,6 +138,7 @@ fn compare(reference: &Path, test: &Path, out: &Path, tmp: &Path, dpi: u32, priv
         "same_break_pct": round(100.0 * pairs.len() as f64 / l1.len().max(1) as f64, 1),
         "page_starts_same": pages.iter().filter(|r| r["page_start_same"] == true).count(),
         "lines": [l1.len(), l2.len()],
+        "dy_median": round(median(&mut all_dy), 1),
     });
     Ok(json!({"summary": summary, "pages": pages, "dx_diffs": dx_diffs, "break_diffs": breaks}))
 }
@@ -322,6 +330,11 @@ fn lcs(a: &[String], b: &[String]) -> Vec<(usize, usize)> {
 fn hash(s: &str) -> String {
     let h = s.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3));
     format!("{h:016x}")[..10].to_string()
+}
+
+fn median(v: &mut [f64]) -> f64 {
+    v.sort_by(f64::total_cmp);
+    v.get(v.len() / 2).copied().unwrap_or(0.0)
 }
 
 fn round(v: f64, places: i32) -> f64 {

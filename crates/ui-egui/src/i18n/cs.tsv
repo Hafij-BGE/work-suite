@@ -2699,3 +2699,8 @@ preview	Title	Ukázka
 	Source code: github.com/Hafij-BGE/work-suite	Zdrojový kód: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	Součást WorkSuite, vytvořil Md Hafijur Rahman.
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} není nainstalováno
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	Písmo {font} není nainstalováno, proto se text zobrazuje písmem {used}. Řádky a stránky se mohou zalamovat jinak než ve Wordu.
+	Click to install it on this computer.	Kliknutím ho nainstalujete do tohoto počítače.
+	Install from Windows on this PC	Nainstalovat z Windows v tomto počítači

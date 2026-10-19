@@ -192,3 +192,66 @@ fn a_subset_font_word_embeds_lays_out_text_set_in_its_table_name() {
     let x = end_x(&docx_embedding(FAMILY, Some((&subset, "{6A0E3B57-1C2D-4E8F-9A7B-3D5C1E0F2B64}")), TEXT));
     assert!((x - mono).abs() < 0.01, "measured with the embedded subset: {x} vs {mono} (missing {missing})");
 }
+
+/// A document set in a font that isn't installed says so: `file.info` lists the font with the
+/// family drawn instead, opening the file puts a notice in the status bar, and adding the font
+/// clears it. Word keeps the missing name in the font box without saying the pages may differ.
+#[test]
+fn fonts_that_are_not_installed_are_reported_until_added() {
+    const FAMILY: &str = "Missing Face 4";
+    let listed = |s: &mut Session| -> Vec<serde_json::Value> {
+        let info = s.run("file.info", &json!({})).unwrap();
+        info["missingFonts"].as_array().unwrap().iter().filter(|m| m["font"] == FAMILY).cloned().collect()
+    };
+    let mut s = Session::new(wordcraft_doc::Document::new());
+    text_end_x(&mut s, FAMILY, "Lines and pages");
+    let missing = listed(&mut s);
+    assert_eq!(missing.len(), 1, "{missing:?}");
+    assert!(!missing[0]["shownWith"].as_str().unwrap().is_empty());
+
+    let dir = std::env::temp_dir().join(format!("wc-missing-font-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("missing.docx");
+    s.run("file.save", &json!({"path": path.to_string_lossy()})).unwrap();
+    let mut o = Session::new(wordcraft_doc::Document::new());
+    let r = o.run("file.open", &json!({"path": path.to_string_lossy()})).unwrap();
+    assert!(r["missingFonts"].as_array().unwrap().iter().any(|m| m["font"] == FAMILY), "{r}");
+    assert!(o.status.contains(&format!("{FAMILY} (shown with ")), "status: {}", o.status);
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let data = base64_encode(&renamed("JetBrainsMono-Regular.ttf", "JetBrains Mono", FAMILY));
+    o.run("font.add", &json!({"data": data, "name": "MissingFace4-Regular.ttf"})).unwrap();
+    assert!(listed(&mut o).is_empty(), "installed now");
+    o.run("font.remove", &json!({"family": FAMILY})).unwrap();
+    assert_eq!(listed(&mut o).len(), 1, "missing again once removed");
+}
+
+/// `font.add {"folder"}` installs the font files in a folder and its subfolders, only the
+/// families asked for when `families` is given; files already available are counted, not added
+/// again.
+#[test]
+fn a_folder_of_fonts_installs_the_families_asked_for() {
+    const ONE: &str = "Folder Face 41";
+    const TWO: &str = "Folder Face 42";
+    let dir = std::env::temp_dir().join(format!("wc-font-folder-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("sub")).unwrap();
+    std::fs::write(dir.join("one.ttf"), renamed("JetBrainsMono-Regular.ttf", "JetBrains Mono", ONE)).unwrap();
+    std::fs::write(dir.join("sub/two.ttf"), renamed("JetBrainsMono-Regular.ttf", "JetBrains Mono", TWO)).unwrap();
+    std::fs::write(dir.join("readme.txt"), b"not a font").unwrap();
+    let folder = dir.to_string_lossy().to_string();
+    let mut s = Session::new(wordcraft_doc::Document::new());
+
+    let r = s.run("font.add", &json!({"folder": folder, "families": [ONE]})).unwrap();
+    assert_eq!(r["added"], json!([ONE]), "{r}");
+    assert!(!wordcraft_fonts::FontDb::global().has_family(TWO));
+    let r = s.run("font.add", &json!({"folder": folder})).unwrap();
+    assert_eq!(r["added"], json!([TWO]), "{r}");
+    assert_eq!(r["alreadyAvailable"], 1);
+    assert!(s.run("font.add", &json!({"folder": dir.join("readme.txt").to_string_lossy()})).is_err(), "a file isn't a folder");
+
+    for f in [ONE, TWO] {
+        s.run("font.remove", &json!({"family": f})).unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
