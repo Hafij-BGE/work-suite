@@ -90,7 +90,7 @@ Run workflow), which tags the commit `android-v<VERSION>`, or push such a tag yo
 
 Android only installs an update signed with the same key as the installed app. Releases are
 signed with WorkSuite's release key (certificate SHA-256
-`c666b60c857c2c273c12a44efdfb680600e73faf948cd64cb7cad2183b1685f8`, CN=WorkSuite,
+`165ae9cd100ad137cfd6423b7802a7f84e34b397f315169d64803f9977610b9a`, CN=WorkSuite,
 O=Md Hafijur Rahman), kept by its owner and given to the workflow as the repository secrets
 `WORDCRAFT_KEYSTORE_BASE64` (the keystore, base64), `WORDCRAFT_KEYSTORE_PASSWORD`,
 `WORDCRAFT_KEY_ALIAS` (`worksuite`) and `WORDCRAFT_KEY_PASSWORD` (Settings › Secrets and variables

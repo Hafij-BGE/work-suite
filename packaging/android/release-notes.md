@@ -3,6 +3,13 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## Updating from 0.9.3: uninstall it first
+
+0.9.4 is signed with a new release key, because 0.9.3's key was lost. Android won't install it over
+0.9.3, so save your documents, uninstall WorkSuite 0.9.3, then install 0.9.4. Your documents stay
+where you saved them; settings and recent files start fresh. Versions after 0.9.4 install as
+updates again.
+
 ## New in 0.9.4: missing fonts are named, and can be installed
 
 - **Writer says when a font isn't installed.** A document set in a font this device doesn't have
@@ -19,7 +26,7 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 - WorkSuite is now signed with a permanent key, under its own app id
   (`io.github.hafijbge.worksuite`): 0.9.3 installs **next to** an older WorkSuite instead of
   failing with a package conflict. Open your documents in the old one and save them, then uninstall
-  it. Every later version installs as an update, keeping your settings and recent files.
+  it.
 - The apps show only WorkSuite's name and icon: About shows the WorkSuite icon and its maker, and
   the apps call themselves Writer, Slides and Sheets throughout.
 
