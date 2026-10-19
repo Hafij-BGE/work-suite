@@ -12,3 +12,7 @@ plan/
 /packaging/android/build/
 /packaging/android/.gradle/
 /packaging/android/local.properties
+
+# Signing keys never go in the repository (releases read them from GitHub secrets).
+*.jks
+*.keystore

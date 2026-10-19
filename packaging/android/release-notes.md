@@ -5,6 +5,12 @@ one app, based on [WordCraft](https://github.com/storytold/wordcraft),
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.3: one key for every release
+
+- WorkSuite is now signed with a permanent key: **uninstall the old WorkSuite one last time**
+  before installing 0.9.3 (save your documents first), and every later version installs as an
+  update, keeping your settings and recent files.
+
 ## New in 0.9.2: stylus support
 
 - **A pen works like a pen.** With a stylus (S Pen, USI or another active pen) the tip selects
@@ -48,11 +54,12 @@ one app, based on [WordCraft](https://github.com/storytold/wordcraft),
 
 ## Install
 
-1. Download `WorkSuite-0.9.2-android-release.apk` below, on your phone.
+1. Download `WorkSuite-0.9.3-android-release.apk` below, on your phone.
 2. Open it, and allow installing from that app when Android asks.
 
-If an earlier preview (WordCraft or WorkSuite Writer) is installed, uninstall it first: each
-preview is signed with a different key.
+If a version before 0.9.3 (or WordCraft or WorkSuite Writer) is installed, uninstall it first:
+those previews were each signed with a throwaway key. From 0.9.3 on, new versions install over the
+old one.
 
 For 64-bit ARM phones and tablets running Android 8 or later.
 
