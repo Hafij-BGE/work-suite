@@ -50,7 +50,19 @@ jobs:
       - name: Release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.WORDCRAFT_KEYSTORE_BASE64 }}
+          # Only whether each is there (never a value), to say what is missing.
+          HAS_PASSWORD: ${{ secrets.WORDCRAFT_KEYSTORE_PASSWORD != '' }}
+          HAS_ALIAS: ${{ secrets.WORDCRAFT_KEY_ALIAS != '' }}
+          HAS_KEY_PASSWORD: ${{ secrets.WORDCRAFT_KEY_PASSWORD != '' }}
+          VARIABLES: ${{ vars.WORDCRAFT_KEYSTORE_BASE64 != '' || vars.WORDCRAFT_KEYSTORE_PASSWORD != '' || vars.WORDCRAFT_KEY_ALIAS != '' || vars.WORDCRAFT_KEY_PASSWORD != '' }}
         run: |
+          echo "secrets: WORDCRAFT_KEYSTORE_BASE64 $([ -n "$KEYSTORE_BASE64" ] && echo set || echo missing)," \
+            "WORDCRAFT_KEYSTORE_PASSWORD $([ "$HAS_PASSWORD" = true ] && echo set || echo missing)," \
+            "WORDCRAFT_KEY_ALIAS $([ "$HAS_ALIAS" = true ] && echo set || echo missing)," \
+            "WORDCRAFT_KEY_PASSWORD $([ "$HAS_KEY_PASSWORD" = true ] && echo set || echo missing)"
+          if [ "$VARIABLES" = true ]; then
+            echo "::error::WORDCRAFT_* values are saved as Actions *variables*, which aren't secret: delete them there and add them on the Secrets tab."
+          fi
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             echo "WORDCRAFT_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
