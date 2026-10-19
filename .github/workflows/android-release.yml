@@ -81,10 +81,13 @@ jobs:
           # SHA-256 of WorkSuite's release certificate (CN=WorkSuite, O=Md Hafijur Rahman).
           RELEASE_CERT: 165ae9cd100ad137cfd6423b7802a7f84e34b397f315169d64803f9977610b9a
         run: |
-          apksigner="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -name apksigner | sort -V | tail -1)"
-          got="$("$apksigner" verify --print-certs dist/release/*.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          # The build-tools installed above, not whichever the runner image has newest.
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          out="$("$apksigner" verify --print-certs dist/release/*.apk 2>&1)" || true
+          got="$(printf '%s\n' "$out" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
           echo "certificate: $got"
           if [ "$got" != "$RELEASE_CERT" ]; then
+            printf '%s\n' "$out"
             echo "::error::The APK is not signed with WorkSuite's release certificate."
             exit 1
           fi
