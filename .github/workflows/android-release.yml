@@ -81,7 +81,7 @@ jobs:
           # SHA-256 of WorkSuite's release certificate (CN=WorkSuite, O=Md Hafijur Rahman).
           RELEASE_CERT: c666b60c857c2c273c12a44efdfb680600e73faf948cd64cb7cad2183b1685f8
         run: |
-          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
+          apksigner="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -name apksigner | sort -V | tail -1)"
           got="$("$apksigner" verify --print-certs dist/release/*.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
           echo "certificate: $got"
           if [ "$got" != "$RELEASE_CERT" ]; then
@@ -90,7 +90,7 @@ jobs:
           fi
       - name: Checksum and tag
         run: |
-          cd dist/release && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
+          cd dist/release && sha256sum -- *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
           VERSION="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/packaging/android/VERSION")"
           if [ "${GITHUB_REF_TYPE}" = tag ]; then tag="$GITHUB_REF_NAME"; else tag="android-v$VERSION"; fi
           echo "TAG=$tag" >> "$GITHUB_ENV"
