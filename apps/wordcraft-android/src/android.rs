@@ -152,7 +152,7 @@ struct Folders {
     documents: Option<PathBuf>,
     /// Temporary files.
     cache: Option<PathBuf>,
-    /// The editors' copies of documents picked in Android's file picker (made by `WriterActivity`).
+    /// The editors' copies of documents picked in Android's file picker (made by `WorkSuiteActivity`).
     copies: Option<PathBuf>,
 }
 

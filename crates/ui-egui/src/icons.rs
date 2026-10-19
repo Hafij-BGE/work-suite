@@ -1611,3 +1611,21 @@ pub fn library(p: &Painter, r: Rect, icon: &wordcraft_render::icon_lib::Icon, c:
         }
     }
 }
+
+/// WorkSuite's mark, as on its launcher icon: three app cards fanned out on slate (Sheets green,
+/// Slides orange, Writer's page in front).
+pub fn paint_worksuite_mark(p: &egui::Painter, r: egui::Rect) {
+    use egui::{Color32, Stroke, pos2, vec2};
+    let k = r.width() / 56.0;
+    p.rect_filled(r, 14.0 * k, Color32::from_rgb(0x1F, 0x29, 0x37));
+    let card = |x: f32, y: f32| egui::Rect::from_min_size(r.min + vec2(x * k, y * k), vec2(22.0 * k, 28.0 * k));
+    p.rect_filled(card(9.0, 15.0), 3.0 * k, Color32::from_rgb(0x1E, 0x8A, 0x4C));
+    p.rect_filled(card(25.0, 12.0), 3.0 * k, Color32::from_rgb(0xD9, 0x5B, 0x2B));
+    let page = card(17.0, 18.0);
+    p.rect_filled(page, 3.0 * k, Color32::WHITE);
+    for (i, w) in [14.0_f32, 14.0, 8.4].into_iter().enumerate() {
+        let y = page.min.y + (8.0 + 6.0 * i as f32) * k;
+        let x0 = page.min.x + 4.0 * k;
+        p.line_segment([pos2(x0, y), pos2(x0 + w * k, y)], Stroke::new(2.2 * k, Color32::from_rgb(0x2B, 0x5C, 0xD6)));
+    }
+}

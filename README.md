@@ -78,10 +78,10 @@ them; each keeps its files open while another one shows.
 Needs Android 8 or later on a 64-bit ARM device (nearly every phone and tablet from the last
 several years).
 
-**"App not installed" or "package conflict"?** The early previews were each signed with a
-different key, and Android only updates an app signed with the same key. Save your documents,
-uninstall WorkSuite (and any WordCraft or WorkSuite Writer preview), then install the new APK.
-Your documents in Downloads, Documents and other folders are not touched.
+**Two WorkSuite icons after installing 0.9.3?** Versions before 0.9.3 used another app id, so the
+new one installs beside them. Save your documents in the old one, then uninstall it; your documents
+in Downloads, Documents and other folders are not touched. From 0.9.3 on, new versions install as
+updates.
 
 ## Known limits
 
@@ -115,28 +115,21 @@ screenshot in software.
 | Where | What |
 |---|---|
 | [`apps/wordcraft-android`](apps/wordcraft-android) | The Android app: the home screen and app switcher (`suite.rs`), touch, Back, insets and the stylus's eraser end |
-| [`crates/`](crates) | Writer: the WordCraft engine, file formats, layout and interface |
-| [`deckcraft/`](deckcraft) | Slides: DeckCraft (its own Cargo workspace) |
-| [`gridcraft/`](gridcraft) | Sheets: GridCraft (its own Cargo workspace) |
+| [`crates/`](crates) | Writer: its engine, file formats, layout and interface |
+| [`deckcraft/`](deckcraft) | Slides (its own Cargo workspace) |
+| [`gridcraft/`](gridcraft) | Sheets (its own Cargo workspace) |
 | [`packaging/android`](packaging/android) | The Java activity (file picker, Open with, system bars), Gradle project, icon and build script |
 | [`vendor/winit`](vendor/winit) | winit with a small patch that makes a stylus work as a pen ([`PATCHED.md`](vendor/winit/PATCHED.md)) |
 
 ## Credits and license
 
-**WorkSuite** is made by **Md Hafijur Rahman**: the Android suite, its home screen, touch and
-stylus support and the phone-sized interface.
+**WorkSuite** is made by **Md Hafijur Rahman**.
 
-It is built on three open-source apps by the ArtCraft team and their contributors:
-[WordCraft](https://github.com/storytold/wordcraft) (Writer),
-[DeckCraft](https://github.com/storytold/deckcraft) (Slides) and
-[GridCraft](https://github.com/storytold/gridcraft) (Sheets). Upstream WordCraft's own README, which
-describes the desktop and web word processor, is kept in [WORDCRAFT.md](WORDCRAFT.md). WorkSuite is
-an independent project, not made or endorsed by the ArtCraft team.
-
-WorkSuite is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option,
-like the apps it is built on; required notices are in [NOTICE](NOTICE). Every bundled font, icon,
-image and other asset is listed with its author, source and license in
-[ATTRIBUTION.md](ATTRIBUTION.md). The vendored winit is Apache-2.0.
+WorkSuite is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
+It includes open-source code by other authors under the same licenses; their copyright notices
+are kept in [LICENSE-MIT](LICENSE-MIT) and [NOTICE](NOTICE) (and in the `deckcraft/` and
+`gridcraft/` folders), as those licenses require. Every bundled font, icon, image and other asset
+is listed with its author, source and license in [ATTRIBUTION.md](ATTRIBUTION.md).
 
 <sub>Microsoft, Word, PowerPoint and Excel are trademarks of the Microsoft group of companies.
 WorkSuite is an independent, open-source project, not affiliated with, sponsored by or endorsed by

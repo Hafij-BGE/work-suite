@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- WorkSuite (Writer, Slides and Sheets): a NativeActivity (WriterActivity adds the system file
+<!-- WorkSuite (Writer, Slides and Sheets): a NativeActivity (WorkSuiteActivity adds the system file
      picker and "Open with") running the Rust library apps/wordcraft-android. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -21,7 +21,7 @@
         <!-- Every configuration change is handled by the app (eframe resizes): Android must never
              restart the activity, since the app's event loop can only be created once a process. -->
         <activity
-            android:name=".WriterActivity"
+            android:name=".WorkSuiteActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection"

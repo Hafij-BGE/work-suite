@@ -8,11 +8,11 @@ def parts = (wordcraftVersion.tokenize("-")[0].tokenize(".") + ["0", "0", "0"]).
 def wordcraftVersionCode = parts[0] * 10000 + parts[1] * 100 + parts[2]
 
 android {
-    namespace "io.github.hafijbge.wordcraft"
+    namespace "io.github.hafijbge.worksuite"
     compileSdk 34
 
     defaultConfig {
-        applicationId "io.github.hafijbge.wordcraft"
+        applicationId "io.github.hafijbge.worksuite"
         // Android 8: wgpu's Vulkan and OpenGL ES 3 back ends, and `android-activity`.
         minSdk 26
         // 34, not 35: Android 15 draws apps edge to edge under the status bar when they target 35.

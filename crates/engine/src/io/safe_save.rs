@@ -57,10 +57,10 @@ fn create_directly(path: &Path, refused: io::Error, prepare: impl FnOnce(&mut Fi
         Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
             return Err(guided(
                 refused,
-                "This folder doesn't let WordCraft create the temporary file a safe save needs, so the existing file was left unchanged.",
+                "This folder doesn't let Writer create the temporary file a safe save needs, so the existing file was left unchanged.",
             ));
         }
-        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Err(guided(e, "WordCraft can't create files in this folder.")),
+        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Err(guided(e, "Writer can't create files in this folder.")),
         Err(e) => return Err(e),
     };
     let Err(failed) = prepare(&mut file) else {
@@ -88,7 +88,7 @@ impl std::error::Error for Guided {}
 /// `e`, then `why`, then how to save anyway: Save As to another folder, or access to this one.
 fn guided(e: io::Error, why: &str) -> io::Error {
     let access = if cfg!(target_os = "macos") {
-        "allow WordCraft to use this folder in System Settings › Privacy & Security › Files and Folders"
+        "allow Writer to use this folder in System Settings › Privacy & Security › Files and Folders"
     } else {
         "get write access to this folder"
     };
@@ -103,7 +103,7 @@ fn explain(e: io::Error) -> io::Error {
         return io::Error::new(
             e.kind(),
             format!(
-                "{e}. macOS may be blocking WordCraft from this folder: allow it in System Settings › Privacy & Security › Files and Folders, or save somewhere else"
+                "{e}. macOS may be blocking Writer from this folder: allow it in System Settings › Privacy & Security › Files and Folders, or save somewhere else"
             ),
         );
     }

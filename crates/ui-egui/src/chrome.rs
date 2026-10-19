@@ -500,7 +500,7 @@ pub fn status_bar(app: &mut WordApp, ui: &mut Ui) {
                         &[("language", &lang), ("file", &file.to_string_lossy()), ("reason", reason)],
                     ),
                     (None, Some(name)) => crate::i18n::fmt(
-                        tl!("No spelling dictionary for {language} is installed, so it isn't checked. WordCraft looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations."),
+                        tl!("No spelling dictionary for {language} is installed, so it isn't checked. Writer looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations."),
                         &[("language", &lang), ("name", name)],
                     ),
                     (None, None) => tl!("Language").to_string(),

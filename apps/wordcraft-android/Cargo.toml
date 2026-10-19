@@ -45,5 +45,5 @@ eframe = { workspace = true, features = ["default_fonts", "wgpu", "android-nativ
 winit = { version = "0.30", default-features = false, features = ["android-native-activity"] }
 # Records go to logcat (`adb logcat -s WorkSuiteWriter`).
 android_logger = "0.15"
-# Calls into WriterActivity (Java) for the system file picker and "Open with".
+# Calls into WorkSuiteActivity (Java) for the system file picker and "Open with".
 jni = "0.21"

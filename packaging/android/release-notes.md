@@ -1,15 +1,16 @@
-WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Android: **Writer**, **Slides** and **Sheets** in
-one app, based on [WordCraft](https://github.com/storytold/wordcraft),
-[DeckCraft](https://github.com/storytold/deckcraft) and
-[GridCraft](https://github.com/storytold/gridcraft).
+WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Android, with
+**Writer**, **Slides** and **Sheets** in one app.
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
-## New in 0.9.3: one key for every release
+## New in 0.9.3: one key for every release, and only WorkSuite's name
 
-- WorkSuite is now signed with a permanent key: **uninstall the old WorkSuite one last time**
-  before installing 0.9.3 (save your documents first), and every later version installs as an
-  update, keeping your settings and recent files.
+- WorkSuite is now signed with a permanent key, under its own app id
+  (`io.github.hafijbge.worksuite`): 0.9.3 installs **next to** an older WorkSuite instead of
+  failing with a package conflict. Open your documents in the old one and save them, then uninstall
+  it. Every later version installs as an update, keeping your settings and recent files.
+- The apps show only WorkSuite's name and icon: About shows the WorkSuite icon and its maker, and
+  the apps call themselves Writer, Slides and Sheets throughout.
 
 ## New in 0.9.2: stylus support
 
@@ -57,9 +58,8 @@ one app, based on [WordCraft](https://github.com/storytold/wordcraft),
 1. Download `WorkSuite-0.9.3-android-release.apk` below, on your phone.
 2. Open it, and allow installing from that app when Android asks.
 
-If a version before 0.9.3 (or WordCraft or WorkSuite Writer) is installed, uninstall it first:
-those previews were each signed with a throwaway key. From 0.9.3 on, new versions install over the
-old one.
+A WorkSuite older than 0.9.3 stays installed beside the new one (it has another app id): save
+your documents from it, then uninstall it. From 0.9.3 on, new versions install over the old one.
 
 For 64-bit ARM phones and tablets running Android 8 or later.
 

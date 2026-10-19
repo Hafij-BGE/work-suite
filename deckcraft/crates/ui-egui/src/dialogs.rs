@@ -47,7 +47,7 @@ fn title(id: &str) -> &'static str {
         "paragraph" => "Paragraph",
         "tabs" => "Tabs",
         "font" => "Font",
-        "about" => "About DeckCraft",
+        "about" => "About Slides",
         "preferences" => "Preferences",
         "autocorrect" => "AutoCorrect",
         "gridOptions" => "Grid Options",
@@ -274,7 +274,7 @@ fn album_choice(ui: &mut Ui, d: &mut Dialog, id: &str, key: &str, default: &str,
     opened.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, label));
 }
 
-const ALBUM_THEMES: &[&str] = &["DeckCraft", "Harbor", "Ember", "Meadow", "Nocturne", "Paper", "Coral Reef", "Slate"];
+const ALBUM_THEMES: &[&str] = &["WorkSuite", "Harbor", "Ember", "Meadow", "Nocturne", "Paper", "Coral Reef", "Slate"];
 
 fn current_theme(app: &SlideApp) -> String {
     app.session
@@ -282,7 +282,7 @@ fn current_theme(app: &SlideApp) -> String {
         .and_then(|d| d.doc.masters.first())
         .map(|m| m.theme.name.clone())
         .filter(|n| !n.is_empty())
-        .unwrap_or_else(|| "DeckCraft".into())
+        .unwrap_or_else(|| "WorkSuite".into())
 }
 
 fn album_json_id(v: &Value) -> Option<u64> {
@@ -465,7 +465,7 @@ fn photo_album_dialog(app: &mut SlideApp, ui: &mut Ui, d: &mut Dialog) -> bool {
         check(ui, d, "Captions under pictures", "captions", false);
         check(ui, d, "ALL pictures black and white", "grayscale", false);
         ui.label("Album theme");
-        album_choice(ui, d, "album_theme", "theme", "DeckCraft", &ALBUM_THEMES.iter().map(|n| (*n, *n)).collect::<Vec<_>>());
+        album_choice(ui, d, "album_theme", "theme", "WorkSuite", &ALBUM_THEMES.iter().map(|n| (*n, *n)).collect::<Vec<_>>());
     });
     let captions = d.fields.get("captions").is_some_and(|v| v == "1");
     let grayscale = d.fields.get("grayscale").is_some_and(|v| v == "1");
@@ -482,7 +482,7 @@ fn photo_album_dialog(app: &mut SlideApp, ui: &mut Ui, d: &mut Dialog) -> bool {
         }
         let layout = d.get("layout", "1");
         let frame = d.get("frame", "rect");
-        let theme = d.get("theme", "DeckCraft");
+        let theme = d.get("theme", "WorkSuite");
         let theme_was = d.fields.get("themeWas").cloned().unwrap_or_default();
         let mut payload = json!({"pictures": list, "layout": layout, "frame": frame, "captions": captions, "grayscale": grayscale});
         if theme != theme_was
@@ -2624,14 +2624,16 @@ pub fn about(_app: &mut SlideApp, ui: &mut Ui) {
         ui.label(egui::RichText::new(crate::APP_NAME).font(theme::bold(22.0)));
         ui.label(egui::RichText::new(version_line()).color(t.text_dim));
         ui.add_space(6.0);
-        ui.label("Presentations and slide shows, rebuilt from scratch in pure Rust.");
-        ui.label("An open-source, clean-room project. Not affiliated with Microsoft.");
+        ui.label("Part of WorkSuite, made by Md Hafijur Rahman.");
         ui.add_space(6.0);
-        ui.hyperlink_to("Join our community on Discord", deckcraft_engine::links::DISCORD);
-        ui.hyperlink_to("getartcraft.com/apps/deckcraft", deckcraft_engine::links::APP_PAGE);
-        ui.hyperlink_to("Source on GitHub", deckcraft_engine::links::GITHUB);
+        ui.hyperlink_to("Source code: github.com/Hafij-BGE/work-suite", "https://github.com/Hafij-BGE/work-suite");
         ui.add_space(6.0);
-        ui.label(egui::RichText::new("MIT OR Apache-2.0 · © 2026 ArtCraft Team and the DeckCraft contributors").size(11.0).color(t.text_faint));
+        // The licence asks that its copyright notice go with every copy.
+        ui.label(
+            egui::RichText::new("Free and open source (MIT OR Apache-2.0) · © 2026 ArtCraft Team and the DeckCraft contributors")
+                .size(11.0)
+                .color(t.text_faint),
+        );
     });
 }
 
@@ -2639,7 +2641,8 @@ pub fn about(_app: &mut SlideApp, ui: &mut Ui) {
 /// from `[workspace.package] version` (the single source of truth, `cargo xtask version`); the
 /// release workflow sets `DECKCRAFT_BUILD_SHA` / `DECKCRAFT_BUILD_DATE` at build time.
 pub fn version_line() -> String {
-    let mut s = format!("Version {}", env!("CARGO_PKG_VERSION"));
+    // WorkSuite's version when its build gives one (packaging/android/build.sh).
+    let mut s = format!("Version {}", option_env!("WORDCRAFT_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")));
     let sha = option_env!("DECKCRAFT_BUILD_SHA").map(|s| s.get(..9).unwrap_or(s)).filter(|s| !s.is_empty());
     let date = option_env!("DECKCRAFT_BUILD_DATE").filter(|s| !s.is_empty());
     match (sha, date) {
@@ -2650,20 +2653,21 @@ pub fn version_line() -> String {
     s
 }
 
-/// DeckCraft's mark, drawn in code: a slide card with a play triangle in our orange.
+/// WorkSuite's mark, as on its launcher icon: three app cards fanned out on slate (Sheets green,
+/// Slides orange, Writer's page in front).
 pub fn paint_logo(p: &egui::Painter, r: Rect) {
-    let orange = Color32::from_rgb(0xF2, 0x6B, 0x1D);
-    let deep = Color32::from_rgb(0xC2, 0x4E, 0x14);
-    let card = r.shrink(r.width() * 0.08);
-    p.rect_filled(card.translate(vec2(r.width() * 0.04, r.width() * 0.05)), CornerRadius::same((r.width() * 0.14) as u8), deep);
-    p.rect_filled(card, CornerRadius::same((r.width() * 0.14) as u8), orange);
-    let c = card.center();
-    let s = card.width() * 0.22;
-    p.add(egui::Shape::convex_polygon(
-        vec![pos2(c.x - s * 0.7, c.y - s), pos2(c.x + s, c.y), pos2(c.x - s * 0.7, c.y + s)],
-        Color32::WHITE,
-        Stroke::NONE,
-    ));
+    let k = r.width() / 56.0;
+    p.rect_filled(r, 14.0 * k, Color32::from_rgb(0x1F, 0x29, 0x37));
+    let card = |x: f32, y: f32| Rect::from_min_size(r.min + vec2(x * k, y * k), vec2(22.0 * k, 28.0 * k));
+    p.rect_filled(card(9.0, 15.0), 3.0 * k, Color32::from_rgb(0x1E, 0x8A, 0x4C));
+    p.rect_filled(card(25.0, 12.0), 3.0 * k, Color32::from_rgb(0xD9, 0x5B, 0x2B));
+    let page = card(17.0, 18.0);
+    p.rect_filled(page, 3.0 * k, Color32::WHITE);
+    for (i, w) in [14.0_f32, 14.0, 8.4].into_iter().enumerate() {
+        let y = page.min.y + (8.0 + 6.0 * i as f32) * k;
+        let x0 = page.min.x + 4.0 * k;
+        p.line_segment([pos2(x0, y), pos2(x0 + w * k, y)], Stroke::new(2.2 * k, Color32::from_rgb(0x2B, 0x5C, 0xD6)));
+    }
 }
 
 /// The selection's proofing language and whether it's marked Do Not Check Spelling: the run at
@@ -3231,7 +3235,7 @@ fn find_dialog(app: &mut SlideApp, ui: &mut Ui, d: &mut Dialog) -> bool {
                 p["with"] = json!(d.get("with", ""));
                 let msg = match app.session.execute("text.replace", &p) {
                     Ok(v) => format!("Replaced {} occurrence(s).", v.get("replaced").and_then(Value::as_u64).unwrap_or(0)),
-                    Err(_) => format!("DeckCraft can't find “{text}”."),
+                    Err(_) => format!("Slides can't find “{text}”."),
                 };
                 d.fields.insert("status".into(), msg);
                 d.fields.remove("cur");
@@ -3246,7 +3250,7 @@ fn find_dialog(app: &mut SlideApp, ui: &mut Ui, d: &mut Dialog) -> bool {
     if find_next {
         let list = app.session.execute("text.find", &q).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default();
         if list.is_empty() {
-            d.fields.insert("status".into(), format!("DeckCraft can't find “{text}”."));
+            d.fields.insert("status".into(), format!("Slides can't find “{text}”."));
             d.fields.remove("cur");
         } else {
             let n = d.get("next", "0").parse::<usize>().unwrap_or(0) % list.len();

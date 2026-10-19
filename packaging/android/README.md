@@ -1,10 +1,10 @@
 # WorkSuite for Android (Writer, Slides and Sheets)
 
-*WorkSuite* is one Android app with three editors: **Writer** (WordCraft, `crates/ui-egui`),
-**Slides** (DeckCraft, `deckcraft/`) and **Sheets** (GridCraft, `gridcraft/`). It opens on a home
+*WorkSuite* is one Android app with three editors: **Writer** (`crates/ui-egui`),
+**Slides** (`deckcraft/`) and **Sheets** (`gridcraft/`). It opens on a home
 screen to pick one; a bar at the top switches between them, and each keeps its files open. The app
 is `apps/wordcraft-android` (`suite.rs`) in a `NativeActivity`; a small Java activity
-(`app/src/main/java/…/WriterActivity.java`) adds what only Java can reach: Android's file picker and
+(`app/src/main/java/…/WorkSuiteActivity.java`) adds what only Java can reach: Android's file picker and
 "Open with". The icon is drawn as Android vector drawables (`app/src/main/res`).
 
 Made by Md Hafijur Rahman. The app works offline: it asks for no network permission, and its file
@@ -12,7 +12,7 @@ picker shows only files on the device.
 
 Back closes what is open (a menu, a dialog, the File view over a document, a slide show), then goes
 to the home screen, then puts the app in the background. The app draws edge to edge and keeps its
-controls clear of the system bars and the keyboard (insets from `WriterActivity.insets()`, applied
+controls clear of the system bars and the keyboard (insets from `WorkSuiteActivity.insets()`, applied
 as egui's safe area).
 
 A stylus works as a pen (`vendor/winit`, see its `PATCHED.md`: winit 0.30 reports a pen as a
@@ -25,7 +25,7 @@ To look at the suite without a phone: `cargo run -p wordcraft-android --example 
 out.ppm [home|writer|slides|sheets] [dark|light] [width height scale] [ribbon tab]` (a software
 renderer).
 
-DeckCraft and GridCraft keep their own Cargo workspaces (the root workspace excludes them); the
+Slides (`deckcraft/`) and Sheets (`gridcraft/`) keep their own Cargo workspaces (the root workspace excludes them); the
 Android crate depends on their UI crates by path.
 
 ## What is different on Android
@@ -73,7 +73,7 @@ packaging/android/build.sh                   # or: build.sh release
 adb install dist/release/WorkSuite-*-android-debug.apk
 ```
 
-The app's version is in [`VERSION`](VERSION), apart from WordCraft's.
+The app's version is in [`VERSION`](VERSION), apart from the crates' own versions.
 `WORDCRAFT_ANDROID_ABIS="arm64-v8a x86_64"` adds the emulator's CPU. A release build is signed with
 `WORDCRAFT_KEYSTORE`, `WORDCRAFT_KEYSTORE_PASSWORD`, `WORDCRAFT_KEY_ALIAS` and
 `WORDCRAFT_KEY_PASSWORD` when they are set, else with the debug key.

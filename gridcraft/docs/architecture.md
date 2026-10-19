@@ -59,8 +59,8 @@ rpm, tarball), FreeBSD, and web (WASM; WebGPU or WebGL2). Release workflows in
 
 ## Known architectural gaps
 
-- No threading in calc (see [hardware-parity.md](hardware-parity.md)).
-- No string catalog or text shaping (see [localization-parity.md](localization-parity.md)).
+- No threading in calc.
+- No string catalog or text shaping.
 - XLSX reader builds the whole workbook in memory; no streaming (#175).
 - Unmodelled XLSX parts are not carried through a save.
 

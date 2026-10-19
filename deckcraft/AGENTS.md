@@ -158,21 +158,7 @@ to `main`.
 ## 7. Planning
 
 `plan/` (gitignored) holds the local plan: `README.md`, `architecture.md`, `execution-plan.md`,
-`STATUS.md` (start every session there) and `powerpoint/` observations. The committed progress
-docs follow craftrules `standards/progress-docs.md`:
-
-| File | Holds |
-|---|---|
-| `ROADMAP.md` | Stage, headline numbers, dimensions, features, languages, progress log |
-| `docs/target-app-parity.md` | The parity assessment against PowerPoint: percentages, hours, calibration |
-| `docs/gaps.md` | Every known shortfall, ranked: the work list. Pick from the top |
-| `docs/roadmap.md` | Current focus, the beta plan, milestones |
-| `docs/parity-checklist.md` | Feature rows scored D/P/M; `cargo xtask parity` regenerates its summary |
-| `docs/file-format-parity.md`, `ui-parity.md`, `hardware-parity.md`, `localization-parity.md`, `animation-parity.md`, `slideshow-parity.md` | Per-dimension and per-feature detail |
-| `docs/architecture.md` | How DeckCraft is built today |
-
-When a task lands, re-score its checklist row, delete or update its `gaps.md` entry, add a line to
-the `ROADMAP.md` progress log, and update each touched doc's status line and revision history.
+`STATUS.md` (start every session there) and `powerpoint/` observations. Planning documents (roadmaps, gap lists, parity assessments) are not kept in this repository.
 
 ## Contributor credits (About window)
 

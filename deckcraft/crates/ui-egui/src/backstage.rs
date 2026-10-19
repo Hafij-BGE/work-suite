@@ -219,7 +219,7 @@ impl Backstage {
 /// Save As and Change File Type: (id for [`SlideApp::export_as`], label, detail).
 pub const SAVE_TYPES: [(&str, &str, &str); 6] = [
     ("pptx", "PowerPoint Presentation (*.pptx)", "Opens in PowerPoint and other presentation apps"),
-    ("deckcraft", "DeckCraft Presentation (*.deckcraft)", "DeckCraft's own format: everything is kept"),
+    ("deckcraft", "Slides Presentation (*.deckcraft)", "Slides' own format: everything is kept"),
     ("pdf", "PDF (*.pdf)", "A fixed copy that keeps its layout on any device"),
     ("outline", "Outline (*.txt)", "The slide titles and bullet text as plain text"),
     ("png", "PNG Picture (*.png)", "The current slide as a picture"),
@@ -551,7 +551,7 @@ fn new_tiles(app: &mut SlideApp, ui: &mut Ui, query: &str, limit: usize, blank: 
             shown += 1;
         }
         if sample && shown < limit {
-            let th = deckcraft_model::theme::builtin_themes().into_iter().find(|t| t.name == "DeckCraft");
+            let th = deckcraft_model::theme::builtin_themes().into_iter().find(|t| t.name == "WorkSuite");
             if tile(ui, "Sample deck: Northern Lights", th.as_ref(), false).clicked()
                 && let Err(e) = deckcraft_engine::sample::open_sample(&mut app.session)
             {
@@ -749,7 +749,7 @@ fn home(app: &mut SlideApp, ui: &mut Ui, bs: &mut Backstage, out: &mut Outcome) 
     }
     if app.community_link {
         ui.add_space(30.0);
-        ui.hyperlink_to("Join the ArtCraft community on Discord", deckcraft_engine::links::DISCORD);
+        ui.hyperlink_to("Source code: github.com/Hafij-BGE/work-suite", "https://github.com/Hafij-BGE/work-suite");
     }
 }
 
@@ -1056,9 +1056,9 @@ fn print(app: &mut SlideApp, ui: &mut Ui, bs: &mut Backstage) {
             dim(
                 ui,
                 if app.services.pick_save.is_some() {
-                    "DeckCraft prints through a PDF: it opens in your PDF viewer, where you choose the printer."
+                    "Slides prints through a PDF: it opens in your PDF viewer, where you choose the printer."
                 } else {
-                    "DeckCraft prints through a PDF: it downloads, ready to print from your browser or PDF viewer."
+                    "Slides prints through a PDF: it downloads, ready to print from your browser or PDF viewer."
                 },
             );
             ui.add_space(14.0);
@@ -1384,18 +1384,11 @@ fn account(app: &mut SlideApp, ui: &mut Ui) {
             dim(ui, &crate::dialogs::version_line());
             dim(ui, "Open source under MIT OR Apache-2.0. Not affiliated with Microsoft.");
             ui.add_space(14.0);
-            if task(
-                ui,
-                Icon::Help,
-                "About WorkSuite Slides",
-                "About WorkSuite Slides",
-                "The version, the people and models who built it, and where to find us.",
-                true,
-            ) {
+            if task(ui, Icon::Help, "About WorkSuite Slides", "About WorkSuite Slides", "The version, and who made it.", true) {
                 let _ = app.run("app.about", json!({}));
             }
-            ui.hyperlink_to("Join our community on Discord", deckcraft_engine::links::DISCORD);
-            ui.hyperlink_to("Source on GitHub", deckcraft_engine::links::GITHUB);
+            dim(ui, "Part of WorkSuite, made by Md Hafijur Rahman.");
+            ui.hyperlink_to("Source code: github.com/Hafij-BGE/work-suite", "https://github.com/Hafij-BGE/work-suite");
         });
     });
 }

@@ -2668,38 +2668,23 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
             }
             ok || cancel
         }
-        Dialog::About { tab } => {
-            ui.set_width(660.0);
+        Dialog::About { .. } => {
+            ui.set_width(520.0);
             ui.horizontal(|ui| {
-                for (i, l) in ["About", "Contributors", "Models"].into_iter().enumerate() {
-                    let i = i as u8;
-                    if ui.selectable_label(*tab == i, tl!(l)).clicked() {
-                        *tab = i;
-                    }
-                }
-            });
-            ui.separator();
-            match *tab {
-                1 => crate::credits::contributors_ui(ui),
-                2 => crate::credits::models_ui(ui),
-                _ => {
+                let (r, _) = ui.allocate_exact_size(egui::vec2(56.0, 56.0), egui::Sense::hover());
+                crate::icons::paint_worksuite_mark(ui.painter(), r);
+                ui.vertical(|ui| {
                     ui.label(egui::RichText::new(tl!(crate::APP_NAME)).font(semibold(22.0)));
-                    let build = option_env!("WORDCRAFT_BUILD_SHA").map(|s| s.get(..8).unwrap_or(s)).unwrap_or(tl!("development build"));
-                    ui.label(crate::i18n::fmt(tl!("Version {version} ({build})"), &[("version", env!("CARGO_PKG_VERSION")), ("build", build)]));
-                    ui.label(tl!(
-                        "A free, open-source word processor for phones and tablets, written in Rust.\nBased on WordCraft by the ArtCraft team."
-                    ));
-                    ui.add_space(6.0);
-                    ui.hyperlink_to(tl!("Source code: github.com/Hafij-BGE/work-suite"), "https://github.com/Hafij-BGE/work-suite");
-                    ui.hyperlink_to(tl!("WordCraft: github.com/storytold/wordcraft"), "https://github.com/storytold/wordcraft");
-                    ui.add_space(6.0);
-                    ui.label(
-                        egui::RichText::new(tl!("MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordCraft contributors."))
-                            .small()
-                            .weak(),
-                    );
-                }
-            }
+                    let version = option_env!("WORDCRAFT_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
+                    ui.label(crate::i18n::fmt(tl!("Version {version} ({build})"), &[("version", version), ("build", "WorkSuite")]));
+                });
+            });
+            ui.add_space(6.0);
+            ui.label(tl!("Part of WorkSuite, made by Md Hafijur Rahman."));
+            ui.hyperlink_to(tl!("Source code: github.com/Hafij-BGE/work-suite"), "https://github.com/Hafij-BGE/work-suite");
+            ui.add_space(6.0);
+            // The licence asks that its copyright notice go with every copy.
+            ui.label(egui::RichText::new(tl!("MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.")).small().weak());
             let (ok, cancel) = buttons(ui, tl!("Close"));
             ok || cancel
         }
@@ -2851,7 +2836,7 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
             });
             ui.label(
                 egui::RichText::new(tl!(
-                    "Keep the password somewhere safe: without it nobody, WordCraft included, can open the document. Leave both boxes empty to remove the password."
+                    "Keep the password somewhere safe: without it nobody, Writer included, can open the document. Leave both boxes empty to remove the password."
                 ))
                 .small()
                 .weak(),

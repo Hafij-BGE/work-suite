@@ -29,7 +29,7 @@ pub fn default_dir() -> Option<PathBuf> {
         return home.map(|h| h.join("Library/Application Support/DeckCraft/Recovery"));
     }
     if cfg!(target_os = "windows") {
-        return std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("DeckCraft").join("Recovery"));
+        return std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("WorkSuite").join("Recovery"));
     }
     std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).or_else(|| home.map(|h| h.join(".local/share"))).map(|d| d.join("deckcraft/recovery"))
 }

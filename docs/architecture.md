@@ -55,7 +55,7 @@ winit or rfd.
   interaction (egui_kittest), MCP acceptance; `hostile_params_never_panic` runs every command with
   junk params.
 - `cargo xtask ci`: fmt, clippy `-D warnings`, tests, asset attribution, layering, wasm build.
-- `cargo xtask parity` regenerates [`parity-checklist.md`](parity-checklist.md); a test keeps the
+- `cargo xtask parity` writes `docs/parity-checklist.md` (generated, not kept); a test keeps the
   catalog percentage above a floor that only rises.
 - GitHub Actions on PRs: packaging lint, and FreeBSD / Windows ARM64 when build files change;
   release builds on pushes to `release`.

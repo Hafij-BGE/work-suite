@@ -1,4 +1,4 @@
-package io.github.hafijbge.wordcraft;
+package io.github.hafijbge.worksuite;
 
 import android.app.NativeActivity;
 import android.content.Intent;
@@ -43,7 +43,7 @@ import java.util.Map;
  *
  * <p>The Rust side calls the public methods on its own thread (JNI); they never block it.
  */
-public class WriterActivity extends NativeActivity {
+public class WorkSuiteActivity extends NativeActivity {
     private static final String TAG = "WorkSuite";
     private static final int PICK_OPEN = 1;
     private static final int PICK_SAVE = 2;

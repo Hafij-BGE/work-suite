@@ -66,7 +66,6 @@ overlays an invisible real-text layer with embedded font subsets.
   repair. Unknown elements round-trip through `Opaque` and `raw_ext` fields.
 - **Native** (`crates/format`): zip with `mimetype`, `presentation.json` and `media/<id>`; readers
   ignore unknown fields; `.slidecraft` files from before the rename still open.
-- Formats and their gaps: [file-format-parity.md](file-format-parity.md).
 
 ## Quality gates
 

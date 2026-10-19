@@ -331,7 +331,7 @@ fn body(ui: &mut Ui, b: &mut FileBrowser, t: &Tokens) -> Option<Option<PathBuf>>
             "Android's file picker isn't available, so the app shows its own browser."
         } else {
             tl!(
-                "The system file dialog isn't available, so WordCraft shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity."
+                "The system file dialog isn't available, so Writer shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity."
             )
         };
         ui.label(egui::RichText::new(why).color(t.text_dim));

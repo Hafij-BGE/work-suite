@@ -1,4 +1,4 @@
-//! Android's own file picker and "Open with", through `WriterActivity` (Java, in
+//! Android's own file picker and "Open with", through `WorkSuiteActivity` (Java, in
 //! `packaging/android`): the editor gets plain file paths, and Java copies them from and back to
 //! the documents the user picked (see the activity's comment).
 //!

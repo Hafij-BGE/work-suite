@@ -13,5 +13,5 @@ win over anything here.
 - Look at UI changes: `deckcraft --sample --control 7990` + `ui.screenshot`, or
   `deckcraft-cli render`.
 - Commit after each landed arc (`M<n>.<k>: what`) and push to `origin main`.
-- Keep `ROADMAP.md`, the progress docs in `docs/` (AGENTS.md §7) and `plan/STATUS.md` current.
+- Keep `plan/STATUS.md` current. Planning documents (roadmaps, gap lists, parity assessments) are not kept in this repository.
 - Don't ask the user questions; record genuinely-theirs decisions in `plan/STATUS.md`.

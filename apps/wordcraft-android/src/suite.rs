@@ -767,12 +767,7 @@ impl Suite {
                         ui.add_space(6.0);
                         ui.add(
                             egui::Label::new(
-                                egui::RichText::new(format!(
-                                    "Version {} · built on the open-source WordCraft, DeckCraft and GridCraft",
-                                    VERSION.trim()
-                                ))
-                                .font(font(12.5))
-                                .color(pal.dim),
+                                egui::RichText::new(format!("Version {} · free and open source", VERSION.trim())).font(font(12.5)).color(pal.dim),
                             )
                             .wrap(),
                         );
@@ -1347,9 +1342,9 @@ mod tests {
 
     #[test]
     fn recent_documents_say_where_they_are_in_words() {
-        let copies = Path::new("/data/user/0/io.github.hafijbge.wordcraft/files/documents");
-        assert_eq!(location_label(Some(copies), "/data/user/0/io.github.hafijbge.wordcraft/files/documents/1391/Meem CV.docx"), "From your files");
-        assert_eq!(location_label(Some(copies), "/data/data/io.github.hafijbge.wordcraft/files/documents/7/a.docx"), "From your files");
+        let copies = Path::new("/data/user/0/io.github.hafijbge.worksuite/files/documents");
+        assert_eq!(location_label(Some(copies), "/data/user/0/io.github.hafijbge.worksuite/files/documents/1391/Meem CV.docx"), "From your files");
+        assert_eq!(location_label(Some(copies), "/data/data/io.github.hafijbge.worksuite/files/documents/7/a.docx"), "From your files");
         assert_eq!(location_label(Some(copies), "/storage/emulated/0/Documents/WorkSuite/Letter.docx"), "Phone storage › Documents › WorkSuite");
         assert_eq!(location_label(None, "/home/me/a.docx"), "/home/me");
     }

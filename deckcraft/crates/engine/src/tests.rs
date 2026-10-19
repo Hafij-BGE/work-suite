@@ -3149,8 +3149,8 @@ fn autocorrect_options_as_you_type() {
     s.execute("text.autocorrect", &json!({"sentenceCaps": false, "days": false})).unwrap();
     assert_eq!(typed(&mut s, "hello monday "), "hello monday ");
     // Your own entries, and deleting a built-in one.
-    s.execute("text.autocorrect", &json!({"add": ["dc", "DeckCraft"], "remove": "teh"})).unwrap();
-    assert_eq!(typed(&mut s, "dc teh "), "DeckCraft teh ");
+    s.execute("text.autocorrect", &json!({"add": ["dc", "WorkSuite"], "remove": "teh"})).unwrap();
+    assert_eq!(typed(&mut s, "dc teh "), "WorkSuite teh ");
     let v = s.execute("text.autocorrect", &json!({})).unwrap();
     let entries = v["entries"].as_array().unwrap();
     assert!(entries.iter().any(|e| e[0] == "dc"));
@@ -3336,7 +3336,7 @@ fn the_caret_takes_the_colour_of_the_text() {
         empty
     };
     // Dark text on the light theme, light text on the dark one: never black on a dark slide.
-    let (light, dark) = (caret("DeckCraft"), caret("Nocturne"));
+    let (light, dark) = (caret("WorkSuite"), caret("Nocturne"));
     assert!(light.r < 0x60 && light.g < 0x60 && light.b < 0x60, "{light:?}");
     assert!(dark.r > 0xC0 && dark.g > 0xC0 && dark.b > 0xC0, "{dark:?}");
     // Text set to red gets a red caret.
