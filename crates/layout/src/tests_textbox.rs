@@ -187,6 +187,7 @@ fn inline_box_that_resizes_to_fit_takes_its_texts_height() {
     let doc = |auto_fit: bool| {
         let filler: Vec<String> = (1..=FILLER).map(|i| format!("Filler line {i}")).collect();
         let mut d = Document::from_text(&format!("{}\n\n\n{brk}\nSecond page text.", filler.join("\n")));
+        d.styles.default_chr.font = Some("Source Sans 3".into());
         let id = text_box(&mut d, FILLER, "", 453.5, 283.46, TextBody { auto_fit, anchor: VAlign::Center, ..Default::default() });
         d.parts.get_mut(&id).unwrap().blocks =
             (1..=3).map(|i| para_block(Paragraph::with_text(&format!("Text box line {i}"), Default::default()))).collect();
@@ -208,5 +209,6 @@ fn inline_box_that_resizes_to_fit_takes_its_texts_height() {
 }
 
 /// Filler paragraphs before the box in [`inline_box_that_resizes_to_fit_takes_its_texts_height`]:
-/// enough that a 10 cm box no longer leaves room for the page break on the first page.
-const FILLER: usize = 22;
+/// enough that a 10 cm box no longer leaves room for the page break on the first page. The test
+/// pins the bundled Source Sans 3, so the count holds whatever fonts the machine has.
+const FILLER: usize = 15;
