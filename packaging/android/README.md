@@ -88,19 +88,17 @@ Run workflow), which tags the commit `android-v<VERSION>`, or push such a tag yo
 (`.github/workflows/android-release.yml`) builds the release APK and publishes a GitHub Release with
 [`release-notes.md`](release-notes.md); update that file first.
 
-Android only installs an update signed with the same key as the installed app. Without a key of
-your own, each release is signed with the build machine's throwaway debug key, so updating means
-uninstalling first. To sign with your own key, make one once (and keep it safe: losing it means no
-more updates):
-
-```sh
-keytool -genkeypair -v -keystore wordcraft-release.jks -alias wordcraft -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 wordcraft-release.jks   # the WORDCRAFT_KEYSTORE_BASE64 secret
-```
-
-then add the repository secrets `WORDCRAFT_KEYSTORE_BASE64`, `WORDCRAFT_KEYSTORE_PASSWORD`,
-`WORDCRAFT_KEY_ALIAS` (`wordcraft`) and `WORDCRAFT_KEY_PASSWORD` (Settings › Secrets and variables ›
-Actions).
+Android only installs an update signed with the same key as the installed app. Releases are
+signed with WorkSuite's release key (certificate SHA-256
+`c666b60c857c2c273c12a44efdfb680600e73faf948cd64cb7cad2183b1685f8`, CN=WorkSuite,
+O=Md Hafijur Rahman), kept by its owner and given to the workflow as the repository secrets
+`WORDCRAFT_KEYSTORE_BASE64` (the keystore, base64), `WORDCRAFT_KEYSTORE_PASSWORD`,
+`WORDCRAFT_KEY_ALIAS` (`worksuite`) and `WORDCRAFT_KEY_PASSWORD` (Settings › Secrets and variables
+› Actions). The workflow fails without them, or when the APK carries another certificate, rather
+than publish an APK that can't update an installed WorkSuite. Keystores never go in the repository
+(`.gitignore`). To replace a release that went wrong, run the workflow by hand with **replace**
+ticked: once the new APK is built and checked, the old release and tag of that version are deleted
+and published again.
 
 Logs: `adb logcat -s WorkSuite`.
 

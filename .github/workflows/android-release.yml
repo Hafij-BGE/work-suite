@@ -1,14 +1,21 @@
 # Android release: on a tag `android-v<version>`, or run by hand (Actions › Android release › Run
 # workflow, which tags the commit `android-v<packaging/android/VERSION>`), build the release APK
 # (packaging/android/build.sh release) and publish it as a GitHub Release with
-# packaging/android/release-notes.md. Signed with the WORDCRAFT_KEYSTORE_* secrets when they are
-# set (see packaging/android/README.md), else with the runner's throwaway debug key.
+# packaging/android/release-notes.md. Signed with the WORDCRAFT_KEYSTORE_* secrets (see
+# packaging/android/README.md); the run fails without them, and unless the APK carries the release
+# certificate below, so an APK Android would refuse as an update is never published. Run by hand
+# with "replace" ticked, it first deletes a release (and tag) of the same version.
 name: Android release
 
 on:
   push:
     tags: ["android-v*"]
   workflow_dispatch:
+    inputs:
+      replace:
+        description: Delete an existing release and tag of the same version, after the new APK is built
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -48,7 +55,8 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             echo "WORDCRAFT_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
           else
-            echo "::warning::No WORDCRAFT_KEYSTORE_BASE64 secret: the APK is signed with a throwaway debug key."
+            echo "::error::No WORDCRAFT_KEYSTORE_BASE64 secret: a release signed with a throwaway key couldn't update an installed WorkSuite."
+            exit 1
           fi
       - name: Build the APK
         env:
@@ -56,12 +64,29 @@ jobs:
           WORDCRAFT_KEY_ALIAS: ${{ secrets.WORDCRAFT_KEY_ALIAS }}
           WORDCRAFT_KEY_PASSWORD: ${{ secrets.WORDCRAFT_KEY_PASSWORD }}
         run: packaging/android/build.sh release
+      - name: Check the signing certificate
+        env:
+          # SHA-256 of WorkSuite's release certificate (CN=WorkSuite, O=Md Hafijur Rahman).
+          RELEASE_CERT: c666b60c857c2c273c12a44efdfb680600e73faf948cd64cb7cad2183b1685f8
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
+          got="$("$apksigner" verify --print-certs dist/release/*.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          echo "certificate: $got"
+          if [ "$got" != "$RELEASE_CERT" ]; then
+            echo "::error::The APK is not signed with WorkSuite's release certificate."
+            exit 1
+          fi
       - name: Checksum and tag
         run: |
           cd dist/release && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
           VERSION="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/packaging/android/VERSION")"
           if [ "${GITHUB_REF_TYPE}" = tag ]; then tag="$GITHUB_REF_NAME"; else tag="android-v$VERSION"; fi
           echo "TAG=$tag" >> "$GITHUB_ENV"
+      - name: Delete the release being replaced
+        if: ${{ inputs.replace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || echo "no release $TAG to replace"
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
