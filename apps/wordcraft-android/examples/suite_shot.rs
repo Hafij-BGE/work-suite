@@ -3,6 +3,9 @@
 //!
 //! `cargo run -p wordcraft-android --example suite_shot -- out.ppm [home|writer|slides|sheets] [dark|light] [width height scale] [ribbon tab]`
 //!
+//! With a ribbon tab, the app shows its built-in sample (Writer's handbook, Slides' sample deck,
+//! Sheets' first sample workbook).
+//!
 //! The window has a 24-point status bar and a 16-point gesture bar, as a phone does.
 
 use std::collections::HashMap;
@@ -32,18 +35,23 @@ fn main() {
     if app.is_some() {
         suite.switch(&ctx, app);
     }
-    // A ribbon tab to show, over a new document.
+    // A ribbon tab to show, over the app's sample.
     if let Some(tab) = args.get(6) {
         if let Some(w) = &mut suite.writer {
-            let _ = w.word.run("file.new", serde_json::json!({}));
+            let _ = w.word.run("file.new", serde_json::json!({"template": "sample"}));
             w.word.ui.backstage = false;
             w.word.ui.tab = tab.clone();
         }
         if let Some(s) = &mut suite.slides {
-            let _ = s.run("file.new", serde_json::json!({}));
+            if deckcraft_engine::sample::open_sample(&mut s.session).is_err() {
+                let _ = s.run("file.new", serde_json::json!({}));
+            }
             s.ui.tab = tab.clone();
         }
         if let Some(s) = &mut suite.sheets {
+            if let Some((name, _)) = gridcraft_engine::sample::SAMPLES.first() {
+                let _ = s.run("file.new", serde_json::json!({ "sample": name }));
+            }
             s.ui.ribbon_tab = tab.clone();
         }
     }
