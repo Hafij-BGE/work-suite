@@ -163,6 +163,24 @@ pub struct Notice {
     pub action: Option<(String, String)>,
 }
 
+/// The notice action that installs the workbook's missing fonts ([`SheetApp::install_fonts`]).
+pub const INSTALL_FONTS: &str = "\u{1}fonts.install";
+
+/// The notice for fonts a workbook uses that aren't installed, or `None` when all are.
+pub fn missing_fonts_text(fonts: &[String]) -> Option<String> {
+    let names = match fonts {
+        [] => return None,
+        [a] => a.clone(),
+        [a, b] => format!("{a} and {b}"),
+        [a, b, c] => format!("{a}, {b} and {c}"),
+        [a, b, c, rest @ ..] => format!("{a}, {b}, {c} and {} more", rest.len()),
+    };
+    let (it, them) = if fonts.len() == 1 { ("isn't", "it") } else { ("aren't", "them") };
+    Some(format!(
+        "{names} {it} installed on this computer. Cells that use {them} are shown in a similar font, so widths and printed pages may differ from Excel."
+    ))
+}
+
 /// Host services the platform shell provides (file pickers, opening URLs).
 #[derive(Default)]
 pub struct Services {
@@ -239,6 +257,8 @@ pub struct SheetApp {
     /// The (doc uid, revision) `fonts_bound` was computed for, so the style table is walked only
     /// when the workbook changes.
     fonts_seen: (u64, u64),
+    /// Workbooks (by uid) whose missing fonts have been mentioned in the notice bar.
+    fonts_noted: std::collections::HashSet<u64>,
     /// Set while a font-set change is pending activation: skip this frame's paint, like the
     /// startup `fonts_ready` gate (egui applies new definitions at the next pass).
     fonts_rebind: bool,
@@ -296,6 +316,7 @@ impl SheetApp {
             fonts_set: false,
             fonts_bound: Vec::new(),
             fonts_seen: (0, 0),
+            fonts_noted: std::collections::HashSet::new(),
             fonts_rebind: false,
             fonts_han: None,
             effective_dark: false,
@@ -338,6 +359,70 @@ impl SheetApp {
             names.extend(d.wb.sheets.iter().flat_map(|sh| sh.shapes.iter().filter_map(|s| s.format.font.clone())));
         }
         names
+    }
+
+    /// Say once per workbook which of its fonts aren't installed, in the notice bar (when it is
+    /// free), offering to install them from a Windows installation on this PC when there is one.
+    fn note_missing_fonts(&mut self, uid: u64, used: &[String]) {
+        if uid == 0 || self.notice.is_some() || self.fonts_noted.contains(&uid) {
+            return;
+        }
+        let missing = fonts::missing_among(used);
+        self.fonts_noted.insert(uid);
+        let Some(text) = missing_fonts_text(&missing) else { return };
+        #[cfg(not(target_arch = "wasm32"))]
+        let action = (!fonts::windows_font_dirs().is_empty()).then(|| ("Install from Windows on this PC".to_string(), INSTALL_FONTS.to_string()));
+        #[cfg(target_arch = "wasm32")]
+        let action = None;
+        self.notice = Some(Notice { text, kind: NoticeKind::Info, action });
+    }
+
+    /// `ui.fonts.install` and the notice's Install button: copy fonts into the user font folder
+    /// and use them at once.
+    pub fn install_fonts(&mut self, p: &Json) -> Result<Json, String> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = p;
+            Err("installing fonts isn't available on the web".into())
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let missing = fonts::missing_among(&self.used_fonts());
+            let only: Option<Vec<String>> = match p.get("families").and_then(Json::as_array) {
+                Some(list) => Some(list.iter().filter_map(Json::as_str).map(str::to_string).collect()),
+                None if p.get("all").and_then(Json::as_bool) == Some(true) => None,
+                None if p.get("folder").is_some() => None,
+                None => Some(missing.clone()),
+            };
+            let dirs = match p.get("folder").and_then(Json::as_str) {
+                Some(f) if std::path::Path::new(f).is_dir() => vec![std::path::PathBuf::from(f)],
+                Some(f) => return Err(format!("{f}: not a folder")),
+                None => fonts::windows_font_dirs(),
+            };
+            if dirs.is_empty() {
+                return Err("no Windows installation found on this computer (looked for a mounted partition with Windows/Fonts)".into());
+            }
+            let r = fonts::install_fonts_from(&dirs, only.as_deref(), None);
+            let still = fonts::missing_among(&self.used_fonts());
+            // Bind the new families at the next frame.
+            self.fonts_bound.clear();
+            self.fonts_seen = (0, 0);
+            let text = match (r.added.is_empty(), still.is_empty()) {
+                (false, true) => format!("Installed {} on this computer.", r.added.join(", ")),
+                (false, false) => format!("Installed {}. Still not installed: {}.", r.added.join(", "), still.join(", ")),
+                (true, false) => format!("{} wasn't found in the Windows installation on this PC.", still.join(", ")),
+                (true, true) => "Every font this workbook uses is installed.".into(),
+            };
+            self.notice = Some(Notice { text, kind: NoticeKind::Info, action: None });
+            Ok(json!({
+                "added": r.added,
+                "alreadyAvailable": r.already,
+                "notFound": still,
+                "errors": r.errors,
+                "to": r.to.map(|t| t.to_string_lossy().to_string()),
+                "searched": dirs.iter().map(|d| d.to_string_lossy().to_string()).collect::<Vec<_>>(),
+            }))
+        }
     }
 
     /// Runs an engine command (or a UI command) and handles UI requests it makes.
@@ -681,6 +766,12 @@ impl SheetApp {
                 self.notice = None;
                 Ok(Json::Null)
             }
+            // The workbook's fonts that aren't installed (drawn with a substitute).
+            "ui.fonts.missing" => Ok(json!({"missing": fonts::missing_among(&self.used_fonts())})),
+            // Install fonts on this computer: {"windows": true} from a Windows installation on
+            // this PC, or {"folder": path}; "families" limits them (default with "windows": the
+            // workbook's missing fonts).
+            "ui.fonts.install" => self.install_fonts(p),
             _ => return None,
         };
         Some(r)
@@ -1031,6 +1122,7 @@ impl SheetApp {
             if seen != self.fonts_seen {
                 let used = self.used_fonts();
                 self.fonts_seen = seen;
+                self.note_missing_fonts(seen.0, &used);
                 if used != self.fonts_bound {
                     ctx.set_fonts(theme::font_definitions_with(self.ui.language, &used));
                     self.fonts_bound = used;

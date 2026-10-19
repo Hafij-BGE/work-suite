@@ -10,6 +10,8 @@
 
 mod fallback;
 mod fontdb;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod install;
 pub mod script;
 mod shape;
 

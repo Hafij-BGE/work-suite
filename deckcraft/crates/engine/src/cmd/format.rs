@@ -13,7 +13,7 @@ use crate::{Result, Session};
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
-        cmd!(noundo "font.add", "Add Font", [], None, "{data: base64 TTF/OTF/TTC} → {faces} added for this session", always, font_add),
+        cmd!(noundo "font.add", "Add Font", [], None, "{data: base64 TTF/OTF/TTC} → {faces} added for this session; or {windows: true} (fonts of a Windows installation on this PC: a dual-boot partition's Windows/Fonts and Microsoft 365 cloud fonts such as Aptos) or {folder: path}, with families?: [name] (default for windows: the presentation's missing fonts; all: true for every font) → {added, alreadyAvailable, notFound, errors, to}: installed on this computer (copied to the user font folder)", always, font_add),
         cmd!(noundo "font.rescan", "Rescan Installed Fonts", ["Home", "Font"], None, "{} → {faces, families} (fonts installed since start-up)", always, font_rescan),
         cmd!("format.bold", "Bold", ["Home", "Font"], Some("Cmd+B"), "{on?: bool}", has_text_or_shapes, bold),
         cmd!("format.italic", "Italic", ["Home", "Font"], Some("Cmd+I"), "{on?: bool}", has_text_or_shapes, italic),
@@ -1215,7 +1215,49 @@ fn state(s: &mut Session, _p: &Value) -> Result<Value> {
 }
 
 /// Add a font from its bytes for this session (it then shows in the font menu and draws).
-fn font_add(_s: &mut Session, p: &Value) -> Result<Value> {
+/// `font.add` with `windows` or `folder`: install font files on this computer.
+#[cfg(not(target_arch = "wasm32"))]
+fn font_install(s: &mut Session, p: &Value) -> Result<Value> {
+    use deckcraft_fonts::install;
+    let missing = s.doc().map(|st| st.missing_fonts.clone()).unwrap_or_default();
+    let dirs = match str_param(p, "folder") {
+        Some(f) if std::path::Path::new(f).is_dir() => vec![std::path::PathBuf::from(f)],
+        Some(f) => return Err(bad("font.add", format!("{f}: not a folder"))),
+        None => install::windows_font_dirs(),
+    };
+    if dirs.is_empty() {
+        return Err(bad("font.add", "no Windows installation found on this computer (looked for a mounted partition with Windows/Fonts)"));
+    }
+    let only: Option<Vec<String>> = match p.get("families").and_then(Value::as_array) {
+        Some(list) => Some(list.iter().filter_map(Value::as_str).map(str::to_string).collect()),
+        None if p.get("all").and_then(Value::as_bool) == Some(true) || str_param(p, "folder").is_some() => None,
+        None => Some(missing),
+    };
+    let r = install::install_fonts_from(&dirs, only.as_deref(), None);
+    // The open presentations re-check which of their fonts are missing.
+    let mut still = Vec::new();
+    if let Ok(st) = s.doc_mut() {
+        st.missing_fonts = crate::fonts::missing_fonts(&st.doc);
+        still.clone_from(&st.missing_fonts);
+    }
+    Ok(json!({
+        "added": r.added,
+        "alreadyAvailable": r.already,
+        "notFound": still,
+        "errors": r.errors,
+        "to": r.to.map(|t| t.to_string_lossy().to_string()),
+        "searched": dirs.iter().map(|d| d.to_string_lossy().to_string()).collect::<Vec<_>>(),
+    }))
+}
+
+fn font_add(s: &mut Session, p: &Value) -> Result<Value> {
+    if p.get("windows").and_then(Value::as_bool) == Some(true) || str_param(p, "folder").is_some() {
+        #[cfg(not(target_arch = "wasm32"))]
+        return font_install(s, p);
+        #[cfg(target_arch = "wasm32")]
+        return Err(bad("font.add", "installing fonts isn't available on the web"));
+    }
+    let _ = s;
     let data = str_param(p, "data").and_then(base64_decode).ok_or_else(|| bad("font.add", "missing or invalid base64 `data`"))?;
     if data.len() > 64 << 20 {
         return Err(bad("font.add", "font file larger than 64 MB"));

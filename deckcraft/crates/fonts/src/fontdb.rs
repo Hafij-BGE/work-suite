@@ -482,6 +482,11 @@ pub fn system_font_dirs() -> Vec<std::path::PathBuf> {
     if cfg!(target_arch = "wasm32") {
         return dirs;
     }
+    // Extra folders first (a path list, like PATH): fonts that aren't installed, such as a
+    // Windows partition's fonts when comparing with PowerPoint on another system.
+    if let Some(extra) = std::env::var_os("CRAFT_EXTRA_FONT_DIRS") {
+        dirs.extend(std::env::split_paths(&extra).filter(|p| !p.as_os_str().is_empty()));
+    }
     let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
     if cfg!(target_os = "macos") {
         dirs.extend(["/System/Library/Fonts", "/Library/Fonts"].map(Into::into));
@@ -603,6 +608,18 @@ fn fontconfig_dirs(text: &str, data_home: Option<&str>, home: Option<&std::path:
 /// One face found in a font file: index, family, style and (variable fonts) the named instance's
 /// axis settings.
 type Found = (u32, String, String, Vec<([u8; 4], f32)>);
+
+/// The families of the faces in the font file `data`, each once.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn file_families(data: &[u8]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for (_, family, _, _) in enumerate_faces(data) {
+        if !out.iter().any(|f| f.eq_ignore_ascii_case(&family)) {
+            out.push(family);
+        }
+    }
+    out
+}
 
 /// Parse every face in `data` (a font file or collection); a variable font yields one face per
 /// named instance (InDesign lists them as styles).

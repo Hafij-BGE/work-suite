@@ -13,6 +13,8 @@ const SHOW_MS: f64 = 8000.0;
 pub struct Toast {
     pub text: String,
     pub at: f64,
+    /// Offer to install the missing fonts from a Windows installation on this PC.
+    pub install: bool,
 }
 
 /// The notice for fonts a presentation uses that aren't installed, or `None` when all are.
@@ -35,7 +37,11 @@ pub fn note_missing_fonts(app: &mut SlideApp) {
         return;
     }
     if let Some(text) = missing_fonts_message(&d.missing_fonts) {
-        app.toast = Some(Toast { text, at: crate::now_ms() });
+        #[cfg(not(target_arch = "wasm32"))]
+        let install = !deckcraft_fonts::install::windows_font_dirs().is_empty();
+        #[cfg(target_arch = "wasm32")]
+        let install = false;
+        app.toast = Some(Toast { text, at: crate::now_ms(), install });
     }
 }
 
@@ -47,7 +53,9 @@ pub fn show(app: &mut SlideApp, ctx: &egui::Context) {
     }
     let t = Tokens::get(ctx);
     let text = toast.text.clone();
+    let offer_install = toast.install;
     let mut close = false;
+    let mut install = false;
     egui::Area::new(egui::Id::new("toast")).anchor(Align2::CENTER_BOTTOM, vec2(0.0, -44.0)).order(egui::Order::Foreground).show(ctx, |ui| {
         egui::Frame::NONE
             .fill(t.card)
@@ -59,6 +67,9 @@ pub fn show(app: &mut SlideApp, ctx: &egui::Context) {
                 ui.set_max_width(520.0);
                 ui.horizontal(|ui| {
                     ui.add(egui::Label::new(egui::RichText::new(&text).font(theme::font(13.0)).color(t.text)).wrap());
+                    if offer_install && ui.button(egui::RichText::new("Install from Windows on this PC").font(theme::font(13.0))).clicked() {
+                        install = true;
+                    }
                     let (r, resp) = ui.allocate_exact_size(vec2(20.0, 20.0), egui::Sense::click());
                     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Close"));
                     if resp.hovered() {
@@ -71,7 +82,22 @@ pub fn show(app: &mut SlideApp, ctx: &egui::Context) {
                 });
             });
     });
-    if close {
+    if install {
+        // Copies the presentation's missing fonts into the user font folder and loads them.
+        let text = match app.run("font.add", serde_json::json!({"windows": true})) {
+            Ok(r) => {
+                let names = |k: &str| r[k].as_array().map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", ")).unwrap_or_default();
+                match (names("added"), names("notFound")) {
+                    (a, n) if !a.is_empty() && n.is_empty() => format!("Installed {a} on this computer."),
+                    (a, n) if !a.is_empty() => format!("Installed {a}. Still not installed: {n}."),
+                    (_, n) if !n.is_empty() => format!("{n} wasn't found in the Windows installation on this PC."),
+                    _ => "Every font this presentation uses is installed.".to_string(),
+                }
+            }
+            Err(e) => e,
+        };
+        app.toast = Some(Toast { text, at: crate::now_ms(), install: false });
+    } else if close {
         app.toast = None;
     } else {
         ctx.request_repaint_after(std::time::Duration::from_millis(500));
