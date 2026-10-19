@@ -2298,3 +2298,8 @@
 	Source code: github.com/Hafij-BGE/work-suite	原始碼: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	WorkSuite 的一部分，由 Md Hafijur Rahman 製作。
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} 未安裝
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	{font} 未安裝，因此其文字以 {used} 顯示。行與頁的分隔可能與 Word 不同。
+	Click to install it on this computer.	按一下以在此電腦上安裝。
+	Install from Windows on this PC	從此電腦上的 Windows 安裝

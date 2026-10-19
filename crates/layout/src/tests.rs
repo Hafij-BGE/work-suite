@@ -3878,6 +3878,21 @@ fn justified_lines_ending_with_shift_enter_stretch_like_word() {
     assert!(kept[0] < 500.0, "doNotExpandShiftReturn keeps the line as typed: {}", kept[0]);
 }
 
+/// A font that isn't installed is listed once, with the installed family drawn in its place; an
+/// installed one isn't.
+#[test]
+fn missing_fonts_lists_each_absent_family_once_with_its_substitute() {
+    let mut d = Document::from_text("First paragraph\nSecond paragraph\nThird");
+    for (para, len, font) in [(0, 15, "Nowhere Sans Zq"), (1, 16, "Nowhere Sans Zq"), (2, 5, wordcraft_fonts::FALLBACK_FAMILY)] {
+        d.format_range(&Pos::body(para, 0), &Pos::body(para, len), &|c| c.font = Some(font.to_string())).unwrap();
+    }
+    let missing = crate::missing_fonts(&d, &lay(&d));
+    let ours: Vec<_> = missing.iter().filter(|m| m.requested == "Nowhere Sans Zq").collect();
+    assert_eq!(ours.len(), 1, "{missing:?}");
+    assert!(!ours[0].shown_with.is_empty() && ours[0].shown_with != "Nowhere Sans Zq");
+    assert!(!missing.iter().any(|m| m.requested == wordcraft_fonts::FALLBACK_FAMILY), "{missing:?}");
+}
+
 #[test]
 fn space_shrinking_is_only_for_justified_text() {
     let text = "We tie the spend to a pipe and to the books, so it is in an ad hoc view of all of it. ".repeat(40);

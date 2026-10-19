@@ -356,6 +356,12 @@ pub fn notice_bar(app: &mut SheetApp, ui: &mut Ui) {
         });
     });
     if let Some((_, dialog)) = action {
+        if dialog == crate::INSTALL_FONTS {
+            if let Err(e) = app.install_fonts(&serde_json::json!({"windows": true})) {
+                app.notice = Some(crate::Notice { text: e, kind: crate::NoticeKind::Warning, action: None });
+            }
+            return;
+        }
         app.open_dialog(&dialog, serde_json::json!({}));
     }
     if dismiss {

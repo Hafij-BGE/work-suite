@@ -14,6 +14,8 @@ use skrifa::{GlyphId, MetadataProvider};
 
 pub(crate) mod user;
 pub use user::{FONT_FILE_EXTS, FontFormat, Installed, MAX_FONT_FILE_BYTES, UserFont, UserFontError, decode_font_file, is_font_file_name, sniff};
+#[cfg(not(target_arch = "wasm32"))]
+pub use user::{font_files_under, windows_font_dirs, windows_font_dirs_under};
 
 /// The family used when a requested family is unknown (the UI sans).
 pub const FALLBACK_FAMILY: &str = "Source Sans 3";
@@ -664,6 +666,21 @@ pub(crate) fn legacy_family(family: &str, style: &str) -> String {
 #[cfg(not(target_arch = "wasm32"))]
 const COLOR_BITMAP_TABLES: [&[u8; 4]; 2] = [b"sbix", b"CBDT"];
 
+/// The family names (typographic and legacy) of the faces in the font file at `path`, read from
+/// its name tables only (the rest of the file isn't loaded). Empty for a file that isn't a font.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn font_file_families(path: &std::path::Path) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for f in file_face_names(path) {
+        for name in [f.family, f.legacy] {
+            if !name.is_empty() && !out.iter().any(|o| o.eq_ignore_ascii_case(&name)) {
+                out.push(name);
+            }
+        }
+    }
+    out
+}
+
 /// The names of every face in the font file at `path`, reading only its table directories and
 /// `name` and `fvar` tables: a scan opens hundreds of font files, many of them megabytes long
 /// (CJK collections run to 20 MB and more). A variable font yields one entry per named instance,
@@ -753,6 +770,11 @@ pub fn system_font_dirs() -> Vec<std::path::PathBuf> {
     if cfg!(target_arch = "wasm32") {
         return dirs;
     }
+    // Extra folders first (a path list, like PATH): fonts that aren't installed, such as a
+    // Windows partition's fonts when comparing pages with Word on another OS.
+    if let Some(extra) = std::env::var_os("CRAFT_EXTRA_FONT_DIRS") {
+        dirs.extend(std::env::split_paths(&extra).filter(|p| !p.as_os_str().is_empty()));
+    }
     let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
     if cfg!(target_os = "macos") {
         dirs.extend(["/System/Library/Fonts", "/Library/Fonts"].map(Into::into));
@@ -773,7 +795,11 @@ pub fn system_font_dirs() -> Vec<std::path::PathBuf> {
         let root = std::env::var_os("WINDIR").map(std::path::PathBuf::from).unwrap_or_else(|| "C:\\Windows".into());
         dirs.push(root.join("Fonts"));
         if let Some(l) = std::env::var_os("LOCALAPPDATA") {
-            dirs.push(std::path::PathBuf::from(l).join("Microsoft\\Windows\\Fonts"));
+            let local = std::path::PathBuf::from(l);
+            dirs.push(local.join("Microsoft\\Windows\\Fonts"));
+            // Microsoft 365's cloud fonts (Aptos, Grandview, …), downloaded on demand into
+            // one folder per family; Word documents since 2024 default to Aptos.
+            dirs.push(local.join("Microsoft\\FontCache\\4\\CloudFonts"));
         }
     } else if cfg!(target_os = "android") {
         // Roboto, Noto (every script the phone shows) and the maker's own fonts.

@@ -3,6 +3,17 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.4: missing fonts are named, and can be installed
+
+- **Writer says when a font isn't installed.** A document set in a font this device doesn't have
+  (Aptos, Calibri…) is drawn with a similar font, whose widths differ, so lines and pages can break
+  differently from Word. Writer now says which font is missing and what it is shown with, in the
+  status bar and when the file opens; Slides and Sheets say so too.
+- **Install fonts on the device**: Add Font… copies font files into the app's font folder, so text
+  set in them looks as intended from then on.
+- Comparison tools for developers: a set of test documents and a page-by-page comparison with
+  Word's own PDF export (docs/word-fidelity.md).
+
 ## New in 0.9.3: one key for every release, and only WorkSuite's name
 
 - WorkSuite is now signed with a permanent key, under its own app id

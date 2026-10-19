@@ -2309,3 +2309,8 @@
 	Source code: github.com/Hafij-BGE/work-suite	Вихідний код: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	Частина WorkSuite, автор — Md Hafijur Rahman.
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} не встановлено
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	Шрифт {font} не встановлено, тому текст показано шрифтом {used}. Рядки й сторінки можуть розбиватися інакше, ніж у Word.
+	Click to install it on this computer.	Клацніть, щоб установити його на цьому комп’ютері.
+	Install from Windows on this PC	Установити з Windows на цьому ПК

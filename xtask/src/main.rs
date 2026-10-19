@@ -4,12 +4,14 @@
 //! invoked through `std::process::Command`.
 
 mod assets;
+mod fidelity;
 mod ico;
 mod layers;
 mod parity;
 mod stats;
 mod version;
 mod visual_diff;
+mod word_corpus;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -29,6 +31,12 @@ commands:
   visual-diff <ref.pdf> <test.pdf> <outdir> [--private] [--dpi N]
                   compare two PDFs of a document page by page (SSIM, line breaks, offsets);
                   needs poppler (pdftoppm, pdftotext)
+  word-corpus <outdir>
+                  write the synthetic DOCX layout corpus (fonts, spacing, tables, pictures, breaks)
+                  to export with Word for `fidelity` (see docs/word-fidelity.md)
+  fidelity <corpus-dir> <outdir> [--cli PATH] [--private] [--dpi N]
+                  convert every NAME.docx with a Word-made NAME.pdf and compare them (visual-diff),
+                  writing summary.md; CRAFT_EXTRA_FONT_DIRS adds font folders
   ico <out.ico> <in.png>...
                   pack square PNGs (<= 256 px) into a Windows .ico (see packaging/icons.sh)
 ";
@@ -46,6 +54,8 @@ fn main() -> ExitCode {
         Some("parity") => parity::run(&root()),
         Some("ico") => ico::run(&rest),
         Some("visual-diff") => visual_diff::run(&rest),
+        Some("word-corpus") => word_corpus::run(&rest),
+        Some("fidelity") => fidelity::run(&rest),
         Some("version") => version::run(&root(), &rest),
         Some("-h" | "--help" | "help") | None => {
             print!("{USAGE}");

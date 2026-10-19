@@ -777,7 +777,7 @@ const MISSING_ROMAN_FONT: &str = "Cambria";
 
 /// The family to look `font` up as: [`MISSING_ROMAN_FONT`] for a missing roman font, else `font`.
 /// A missing Thai font keeps its name: it is drawn in a Thai face, not in Cambria (#1549).
-fn lookup_family<'f>(doc: &Document, font: &'f str) -> &'f str {
+pub(crate) fn lookup_family<'f>(doc: &Document, font: &'f str) -> &'f str {
     let db = wordcraft_fonts::FontDb::global();
     let roman = doc.settings.roman_fonts.iter().any(|f| f.eq_ignore_ascii_case(font));
     if roman

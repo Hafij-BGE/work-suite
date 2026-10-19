@@ -2747,3 +2747,8 @@ template	Letter	Thư
 	Source code: github.com/Hafij-BGE/work-suite	Mã nguồn: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	Một phần của WorkSuite, do Md Hafijur Rahman tạo ra.
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	Chưa cài {font}
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	Chưa cài phông {font}, nên văn bản được hiển thị bằng {used}. Dòng và trang có thể ngắt khác với Word.
+	Click to install it on this computer.	Bấm để cài phông này trên máy tính.
+	Install from Windows on this PC	Cài từ Windows trên máy này

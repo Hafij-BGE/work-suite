@@ -2709,3 +2709,8 @@ template	Letter	Lettre
 	Source code: github.com/Hafij-BGE/work-suite	Code source: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	Fait partie de WorkSuite, créé par Md Hafijur Rahman.
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} non installée
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	{font} n’est pas installée : son texte s’affiche en {used}. Les lignes et les pages peuvent se couper autrement que dans Word.
+	Click to install it on this computer.	Cliquez pour l’installer sur cet ordinateur.
+	Install from Windows on this PC	Installer depuis Windows sur ce PC

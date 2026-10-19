@@ -43,6 +43,11 @@ pub fn system_font_dirs() -> Vec<PathBuf> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let mut dirs: Vec<PathBuf> = Vec::new();
+        // Extra folders first (a path list, like PATH): fonts that aren't installed, such as a
+        // Windows partition's fonts when comparing with Excel on another system.
+        if let Some(extra) = std::env::var_os("CRAFT_EXTRA_FONT_DIRS") {
+            dirs.extend(std::env::split_paths(&extra).filter(|p| !p.as_os_str().is_empty()));
+        }
         let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from);
         if cfg!(target_os = "macos") {
             dirs.extend(["/System/Library/Fonts", "/System/Library/Fonts/Supplemental", "/Library/Fonts"].map(Into::into));
@@ -53,7 +58,10 @@ pub fn system_font_dirs() -> Vec<PathBuf> {
             let root = std::env::var_os("WINDIR").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:\\Windows"));
             dirs.push(root.join("Fonts"));
             if let Some(l) = std::env::var_os("LOCALAPPDATA") {
-                dirs.push(PathBuf::from(l).join("Microsoft\\Windows\\Fonts"));
+                let l = PathBuf::from(l);
+                dirs.push(l.join("Microsoft\\Windows\\Fonts"));
+                // Microsoft 365's cloud fonts (Aptos and others), downloaded on demand.
+                dirs.push(l.join("Microsoft\\FontCache\\4\\CloudFonts"));
             }
         } else {
             dirs.extend(["/usr/share/fonts", "/usr/local/share/fonts", "/usr/share/fonts/TTF"].map(Into::into));
@@ -163,9 +171,15 @@ pub fn catalog() -> &'static [Face] {
     CATALOG.get_or_init(|| scan_dirs(&system_font_dirs()))
 }
 
-/// The catalog if the scan has finished, else `None` — never blocks, for use while painting.
-fn catalog_now() -> Option<&'static [Face]> {
-    CATALOG.get().map(Vec::as_slice)
+/// Faces of fonts installed while the app runs ([`install_fonts_from`]), on top of the catalog.
+static ADDED: std::sync::RwLock<Vec<&'static Face>> = std::sync::RwLock::new(Vec::new());
+
+/// The catalog (with the fonts installed since) if the scan has finished, else `None` — never
+/// blocks, for use while painting.
+fn catalog_now() -> Option<Vec<&'static Face>> {
+    let cat = CATALOG.get()?;
+    let added = ADDED.read().unwrap_or_else(|e| e.into_inner());
+    Some(cat.iter().chain(added.iter().copied()).collect())
 }
 
 /// Start cataloging the installed fonts on a background thread, so the first frame doesn't wait for
@@ -191,7 +205,7 @@ pub fn scan_done() -> bool {
 /// The faces of one installed family, regular-weight first (the order roles pick from).
 pub fn faces_of(family: &str) -> Vec<Face> {
     let Some(cat) = catalog_now() else { return Vec::new() };
-    let mut v: Vec<Face> = cat.iter().filter(|f| f.family.eq_ignore_ascii_case(family)).cloned().collect();
+    let mut v: Vec<Face> = cat.iter().filter(|f| f.family.eq_ignore_ascii_case(family)).map(|f| (*f).clone()).collect();
     v.sort_by(|a, b| a.weight.total_cmp(&b.weight).then(a.italic.cmp(&b.italic)).then(a.index.cmp(&b.index)));
     v
 }
@@ -212,6 +226,201 @@ pub fn installed_among(names: &[String]) -> Vec<String> {
     }
     out.sort_by_key(|a| a.to_lowercase());
     out
+}
+
+/// The subset of `names` that isn't installed, each once in first-seen order: the fonts a workbook
+/// names that are drawn with a substitute. Empty until the background scan has finished (nothing
+/// is known to be missing yet). Theme placeholders (`+mn-lt`) and blank names are skipped.
+pub fn missing_among(names: &[String]) -> Vec<String> {
+    let Some(cat) = catalog_now() else { return Vec::new() };
+    let mut out: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    for wanted in names {
+        let w = wanted.trim();
+        if w.is_empty() || w.starts_with('+') || !seen.insert(w.to_lowercase()) {
+            continue;
+        }
+        if !cat.iter().any(|f| f.family.eq_ignore_ascii_case(w)) {
+            out.push(w.to_string());
+        }
+    }
+    out
+}
+
+/// Most font files [`font_files_under`] lists.
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_LISTED_FILES: usize = 5000;
+
+/// The font files under `dirs` (subfolders too, each folder once), sorted, at most a few thousand.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn font_files_under(dirs: &[PathBuf]) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack: Vec<PathBuf> = dirs.to_vec();
+    let mut seen_dirs: HashSet<PathBuf> = HashSet::new();
+    while let Some(dir) = stack.pop() {
+        if out.len() >= MAX_LISTED_FILES || !seen_dirs.insert(std::fs::canonicalize(&dir).unwrap_or_else(|_| dir.clone())) {
+            continue;
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if out.len() < MAX_LISTED_FILES
+                && path.extension().and_then(|e| e.to_str()).is_some_and(|e| matches!(e.to_ascii_lowercase().as_str(), "ttf" | "otf" | "ttc" | "otc"))
+            {
+                out.push(path);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// The folders of fonts belonging to Windows installations on this computer: on Linux and BSD a
+/// Windows partition mounted under `/mnt`, `/media` or `/run/media` (a dual-boot PC), on macOS
+/// one under `/Volumes`; on Windows itself, Microsoft 365's cloud fonts (already read in place).
+/// Per partition: `Windows/Fonts` and, per user, that user's fonts and Microsoft 365 cloud fonts
+/// (Aptos…). Nothing is copied by looking.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn windows_font_dirs() -> Vec<PathBuf> {
+    if cfg!(windows) {
+        let cloud = std::env::var_os("LOCALAPPDATA").map(|l| PathBuf::from(l).join("Microsoft\\FontCache\\4\\CloudFonts"));
+        return cloud.filter(|c| c.is_dir()).into_iter().collect();
+    }
+    let mut parents: Vec<PathBuf> =
+        if cfg!(target_os = "macos") { vec!["/Volumes".into()] } else { vec!["/mnt".into(), "/media".into(), "/run/media".into()] };
+    if let Some(u) = std::env::var_os("USER") {
+        parents.extend([std::path::Path::new("/media").join(&u), std::path::Path::new("/run/media").join(&u)]);
+    }
+    windows_font_dirs_under(&parents)
+}
+
+/// [`windows_font_dirs`] for Windows partitions that are, or are mounted directly in, `parents`.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn windows_font_dirs_under(parents: &[PathBuf]) -> Vec<PathBuf> {
+    fn add_partition(root: &std::path::Path, out: &mut Vec<PathBuf>) {
+        let fonts = root.join("Windows").join("Fonts");
+        if fonts.is_dir() {
+            out.push(fonts);
+        }
+        let Ok(users) = std::fs::read_dir(root.join("Users")) else { return };
+        let mut users: Vec<PathBuf> = users.flatten().map(|u| u.path()).collect();
+        users.sort();
+        for u in users {
+            let local = u.join("AppData").join("Local").join("Microsoft");
+            for sub in [local.join("Windows").join("Fonts"), local.join("FontCache").join("4").join("CloudFonts")] {
+                if sub.is_dir() {
+                    out.push(sub);
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for parent in parents {
+        add_partition(parent, &mut out);
+        let Ok(rd) = std::fs::read_dir(parent) else { continue };
+        let mut subs: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+        subs.sort();
+        for p in subs {
+            add_partition(&p, &mut out);
+        }
+    }
+    out.dedup();
+    out
+}
+
+/// Where fonts installed from the app are copied: the user's own font folder, which every app of
+/// the suite (and other programs) reads — `~/.local/share/fonts/Imported` on Linux and BSD,
+/// `~/Library/Fonts` on macOS, the per-user Fonts folder on Windows.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn user_font_dir() -> Option<PathBuf> {
+    if cfg!(windows) {
+        return std::env::var_os("LOCALAPPDATA").map(|l| PathBuf::from(l).join("Microsoft\\Windows\\Fonts"));
+    }
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    if cfg!(target_os = "macos") {
+        return home.map(|h| h.join("Library/Fonts"));
+    }
+    let data = std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).filter(|p| p.is_absolute()).or_else(|| home.map(|h| h.join(".local/share")));
+    data.map(|d| d.join("fonts").join("Imported"))
+}
+
+/// What [`install_fonts_from`] did.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct InstallReport {
+    /// Families now available that weren't, in the order installed.
+    pub added: Vec<String>,
+    /// Matching files whose faces were all available already.
+    pub already: usize,
+    /// Files that couldn't be read or copied (at most a few).
+    pub errors: Vec<String>,
+    /// The folder they were copied to.
+    pub to: Option<PathBuf>,
+}
+
+/// Install the font files under `dirs` (only those with a family in `only`, when given) into
+/// `dest` (the user font folder by default): each new file is copied there and its faces join the
+/// catalog at once, so cells can use them without restarting. Files whose faces are all available
+/// are left alone. Fonts are copied on this computer only, never anywhere else.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn install_fonts_from(dirs: &[PathBuf], only: Option<&[String]>, dest: Option<PathBuf>) -> InstallReport {
+    const MAX_ERRORS: usize = 10;
+    let mut report = InstallReport { to: dest.or_else(user_font_dir), ..Default::default() };
+    let Some(to) = report.to.clone() else {
+        report.errors.push("no user font folder on this system".into());
+        return report;
+    };
+    let err = |r: &mut InstallReport, e: String| {
+        if r.errors.len() < MAX_ERRORS {
+            r.errors.push(e);
+        }
+    };
+    for path in font_files_under(dirs) {
+        if std::fs::metadata(&path).map(|m| m.len() > MAX_FONT_FILE).unwrap_or(true) {
+            continue;
+        }
+        let Ok(data) = std::fs::read(&path) else {
+            err(&mut report, format!("{}: can't be read", path.display()));
+            continue;
+        };
+        let faces = file_faces(&data);
+        if faces.is_empty() || only.is_some_and(|o| !faces.iter().any(|(_, fam, _)| o.iter().any(|w| w.eq_ignore_ascii_case(fam)))) {
+            continue;
+        }
+        let have = catalog_now().unwrap_or_default();
+        let new = |fam: &str, style: &str| {
+            !have.iter().any(|f| f.family.eq_ignore_ascii_case(fam) && f.weight == style_weight(style) && f.italic == style_italic(style))
+        };
+        if !faces.iter().any(|(_, fam, style)| new(fam, style)) {
+            report.already += 1;
+            continue;
+        }
+        if let Err(e) = std::fs::create_dir_all(&to) {
+            err(&mut report, format!("{}: {e}", to.display()));
+            break;
+        }
+        let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "font.ttf".into());
+        let mut target = to.join(&name);
+        let mut n = 2;
+        while target.exists() && n < 1000 {
+            target = to.join(format!("{n}-{name}"));
+            n += 1;
+        }
+        if let Err(e) = std::fs::write(&target, &data) {
+            err(&mut report, format!("{}: {e}", target.display()));
+            continue;
+        }
+        let mut added = ADDED.write().unwrap_or_else(|e| e.into_inner());
+        for (index, family, style) in faces {
+            if !report.added.iter().any(|a| a.eq_ignore_ascii_case(&family)) && !have.iter().any(|f| f.family.eq_ignore_ascii_case(&family)) {
+                report.added.push(family.clone());
+            }
+            // Leaked: installed fonts are few and live as long as the app.
+            added.push(Box::leak(Box::new(Face { family, path: target.clone(), index, weight: style_weight(&style), italic: style_italic(&style) })));
+        }
+    }
+    report
 }
 
 /// The font list a combo box shows: the standard [`crate::ribbon::FONTS`] names first (what Excel
@@ -419,5 +628,78 @@ mod tests {
         // A family with no faces binds nothing and never touches the map.
         assert!(bind_faces(&mut fonts, "No Such Font", &[]).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A dual-boot Windows partition mounted under a parent folder gives its Windows/Fonts and,
+    /// per user, the Microsoft 365 cloud font folder; other folders give none.
+    #[test]
+    fn windows_font_folders_are_found_on_a_mounted_partition() {
+        let root = std::env::temp_dir().join(format!("gc-winfonts-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let part = root.join("C_drive");
+        let cloud = part.join("Users/Ana/AppData/Local/Microsoft/FontCache/4/CloudFonts/Aptos");
+        for d in [part.join("Windows/Fonts"), cloud.clone(), part.join("Users/Ben/Documents"), root.join("data/Music")] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        std::fs::write(cloud.join("123.ttf"), b"x").unwrap();
+        std::fs::write(cloud.join("notes.txt"), b"x").unwrap();
+        let dirs = windows_font_dirs_under(std::slice::from_ref(&root));
+        assert_eq!(dirs, vec![part.join("Windows/Fonts"), part.join("Users/Ana/AppData/Local/Microsoft/FontCache/4/CloudFonts")]);
+        assert_eq!(font_files_under(&dirs), vec![cloud.join("123.ttf")]);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// A font installed from a folder is copied to the destination and is installed at once (no
+    /// longer missing); installing it again copies nothing.
+    #[test]
+    fn installing_a_font_copies_it_and_it_is_no_longer_missing() {
+        let _g = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // Any installed TrueType font, renamed to a family no system has.
+        let Some((data, family)) = font_files_under(&system_font_dirs())
+            .into_iter()
+            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("ttf")))
+            .find_map(|p| {
+                let data = std::fs::read(&p).ok()?;
+                let faces = file_faces(&data);
+                (faces.len() == 1).then(|| (data, faces[0].1.clone()))
+            })
+        else {
+            eprintln!("skipped: no TrueType font installed");
+            return;
+        };
+        let unique: String =
+            family.chars().enumerate().map(|(i, c)| if c.is_ascii_alphabetic() { if i % 2 == 0 { 'Q' } else { 'z' } } else { c }).collect();
+        let mut renamed = data.clone();
+        let utf16 = |s: &str| s.encode_utf16().flat_map(u16::to_be_bytes).collect::<Vec<u8>>();
+        for (from, to) in [(utf16(&family), utf16(&unique)), (family.as_bytes().to_vec(), unique.as_bytes().to_vec())] {
+            if from.len() != to.len() || from.is_empty() {
+                continue;
+            }
+            let mut i = 0;
+            while let Some(at) = renamed[i..].windows(from.len()).position(|w| w == from.as_slice()) {
+                renamed[i + at..i + at + to.len()].copy_from_slice(&to);
+                i += at + to.len();
+            }
+        }
+        if file_faces(&renamed).first().map(|f| f.1.as_str()) != Some(unique.as_str()) {
+            eprintln!("skipped: couldn't rename {family}");
+            return;
+        }
+        let root = std::env::temp_dir().join(format!("gc-install-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (src, dest) = (root.join("src/sub"), root.join("dest"));
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(src.join("face.ttf"), &renamed).unwrap();
+        catalog();
+        let wanted = vec![unique.clone()];
+        assert_eq!(missing_among(&wanted), wanted);
+        let r = install_fonts_from(&[root.join("src")], Some(&wanted), Some(dest.clone()));
+        assert_eq!(r.added, wanted, "{r:?}");
+        assert!(dest.join("face.ttf").is_file());
+        assert!(missing_among(&wanted).is_empty());
+        assert_eq!(installed_among(&wanted), wanted);
+        let again = install_fonts_from(&[root.join("src")], Some(&wanted), Some(dest.clone()));
+        assert_eq!((again.added.len(), again.already), (0, 1));
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

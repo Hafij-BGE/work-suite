@@ -241,7 +241,13 @@ fn open(s: &mut Session, v: &Value) -> CmdResult {
     if encrypted {
         s.password = password.map(crate::io::Password::new);
     }
-    Ok(json!({"path": path, "paragraphs": s.doc.paragraph_count(), "words": s.doc.word_count(), "encrypted": encrypted}))
+    // Text in a font that isn't installed is drawn with a substitute whose widths differ, so the
+    // pages can break differently from Word's: say so, as the font name alone doesn't.
+    let missing = super::font::missing_fonts_json(s);
+    if let Some(n) = super::font::missing_fonts_notice(s) {
+        s.status = n;
+    }
+    Ok(json!({"path": path, "paragraphs": s.doc.paragraph_count(), "words": s.doc.word_count(), "encrypted": encrypted, "missingFonts": missing}))
 }
 
 /// File › Info › Protect Document › Encrypt with Password: the password Word documents are saved
@@ -414,6 +420,7 @@ fn info(s: &mut Session, _: &Value) -> CmdResult {
         "sections": s.doc.sections().len(),
         "encrypted": s.password.is_some(),
         "layoutMs": l.ms,
+        "missingFonts": super::font::missing_fonts_json(s),
     }))
 }
 

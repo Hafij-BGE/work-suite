@@ -2297,3 +2297,8 @@
 	Source code: github.com/Hafij-BGE/work-suite	ソース コード: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	WorkSuite の一部。作成者: Md Hafijur Rahman。
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} はインストールされていません
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	{font} がインストールされていないため、テキストは {used} で表示されます。行やページの区切りが Word と異なる場合があります。
+	Click to install it on this computer.	クリックしてこのコンピューターにインストールします。
+	Install from Windows on this PC	この PC の Windows からインストール

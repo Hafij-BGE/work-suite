@@ -2722,3 +2722,8 @@ preview	Title	Titel
 	Source code: github.com/Hafij-BGE/work-suite	Källkod: github.com/Hafij-BGE/work-suite
 	WordCraft: github.com/storytold/wordcraft	WordCraft: github.com/storytold/wordcraft
 	Part of WorkSuite, made by Md Hafijur Rahman.	En del av WorkSuite, skapad av Md Hafijur Rahman.
+# Fonts that aren't installed: status bar and font box
+	{font} not installed	{font} är inte installerat
+	{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word.	{font} är inte installerat, så texten visas med {used}. Rader och sidor kan brytas annorlunda än i Word.
+	Click to install it on this computer.	Klicka för att installera det på den här datorn.
+	Install from Windows on this PC	Installera från Windows på den här datorn
