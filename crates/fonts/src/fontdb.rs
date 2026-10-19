@@ -666,12 +666,6 @@ pub(crate) fn legacy_family(family: &str, style: &str) -> String {
 #[cfg(not(target_arch = "wasm32"))]
 const COLOR_BITMAP_TABLES: [&[u8; 4]; 2] = [b"sbix", b"CBDT"];
 
-/// The names of every face in the font file at `path`, reading only its table directories and
-/// `name` and `fvar` tables: a scan opens hundreds of font files, many of them megabytes long
-/// (CJK collections run to 20 MB and more). A variable font yields one entry per named instance,
-/// as it does loaded. Faces with none of the [`OUTLINE_TABLES`](crate::ui_fallback::OUTLINE_TABLES)
-/// and [`COLOR_BITMAP_TABLES`] are left out.
-#[cfg(not(target_arch = "wasm32"))]
 /// The family names (typographic and legacy) of the faces in the font file at `path`, read from
 /// its name tables only (the rest of the file isn't loaded). Empty for a file that isn't a font.
 #[cfg(not(target_arch = "wasm32"))]
@@ -687,6 +681,12 @@ pub fn font_file_families(path: &std::path::Path) -> Vec<String> {
     out
 }
 
+/// The names of every face in the font file at `path`, reading only its table directories and
+/// `name` and `fvar` tables: a scan opens hundreds of font files, many of them megabytes long
+/// (CJK collections run to 20 MB and more). A variable font yields one entry per named instance,
+/// as it does loaded. Faces with none of the [`OUTLINE_TABLES`](crate::ui_fallback::OUTLINE_TABLES)
+/// and [`COLOR_BITMAP_TABLES`] are left out.
+#[cfg(not(target_arch = "wasm32"))]
 fn file_face_names(path: &std::path::Path) -> Vec<Found> {
     use crate::ui_fallback::OUTLINE_TABLES;
     use std::io::{Read, Seek, SeekFrom};
