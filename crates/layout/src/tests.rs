@@ -452,8 +452,10 @@ fn deleted_soft_hyphen_is_no_hyphenation_point_without_markup() {
 #[test]
 fn deleted_text_adds_no_line_break_opportunity_without_markup() {
     // "xx ab\u{ad}cdef" in a column where "xx ab-" and "abcdef" fit but "xx abcdef" does not; only
-    // the soft hyphen (5..7) is track-deleted.
+    // the soft hyphen (5..7) is track-deleted. In the bundled Source Sans 3, so the column fits the
+    // same text whatever fonts the machine has (DejaVu Sans, wider, doesn't fit "abcdef").
     let mut d = Document::from_text("xx ab\u{ad}cdef");
+    d.styles.default_chr.font = Some("Source Sans 3".into());
     d.format_range(&Pos::body(0, 5), &Pos::body(0, 7), &|c| c.del = Some(0)).unwrap();
     d.format_paragraphs(&Pos::body(0, 0), &Pos::body(0, 0), &|p| p.indent_right = Some(468.0 - 40.0)).unwrap();
     let line_starts = |hide_deleted: bool| {
@@ -488,8 +490,10 @@ fn hidden_soft_hyphen_is_no_hyphenation_point_when_hidden_text_is_not_shown() {
 fn hidden_text_adds_no_line_break_opportunity_when_not_shown() {
     // "xx ab" + hidden soft hyphen or space + "cdef", in a column where "xx ab-" and "abcdef" fit
     // but "xx abcdef" does not. Measured in Word (hidden text not printed): "xx" / "abcdef" both times.
+    // In the bundled Source Sans 3, so the column fits the same text whatever fonts the machine has.
     for hidden in ["\u{ad}", " "] {
         let mut d = Document::from_text(&format!("xx ab{hidden}cdef"));
+        d.styles.default_chr.font = Some("Source Sans 3".into());
         let end = 5 + hidden.len();
         d.format_range(&Pos::body(0, 5), &Pos::body(0, end), &|c| c.hidden = Some(true)).unwrap();
         d.format_paragraphs(&Pos::body(0, 0), &Pos::body(0, 0), &|p| p.indent_right = Some(468.0 - 40.0)).unwrap();
@@ -5580,7 +5584,9 @@ fn tight_wrap_follows_an_ellipse() {
         let edge = contour(l.0, l.1).1;
         assert!(l.2 <= edge + 3.0 && l.2 < 169.0 - 10.0, "{what} hugs the curve at {edge}: {l:?} in {tight:?}");
     }
-    assert!(line(&|top| top > 65.0 && top < 80.0).2 >= 160.0, "beside the widest part: {tight:?}");
+    // The line across the middle (y = 80), wherever the line height puts its top.
+    let widest = *tight.iter().find(|l| l.0 <= 80.0 && l.1 > 80.0 && l.2 > 60.0).unwrap();
+    assert!(widest.2 >= 160.0, "beside the widest part: {tight:?}");
     // A convex shape has no gaps for Through to use: it wraps as Tight.
     assert_eq!(through, tight);
 }
