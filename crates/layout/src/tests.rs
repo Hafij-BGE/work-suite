@@ -452,8 +452,10 @@ fn deleted_soft_hyphen_is_no_hyphenation_point_without_markup() {
 #[test]
 fn deleted_text_adds_no_line_break_opportunity_without_markup() {
     // "xx ab\u{ad}cdef" in a column where "xx ab-" and "abcdef" fit but "xx abcdef" does not; only
-    // the soft hyphen (5..7) is track-deleted.
+    // the soft hyphen (5..7) is track-deleted. In the bundled Source Sans 3, so the column fits the
+    // same text whatever fonts the machine has (DejaVu Sans, wider, doesn't fit "abcdef").
     let mut d = Document::from_text("xx ab\u{ad}cdef");
+    d.styles.default_chr.font = Some("Source Sans 3".into());
     d.format_range(&Pos::body(0, 5), &Pos::body(0, 7), &|c| c.del = Some(0)).unwrap();
     d.format_paragraphs(&Pos::body(0, 0), &Pos::body(0, 0), &|p| p.indent_right = Some(468.0 - 40.0)).unwrap();
     let line_starts = |hide_deleted: bool| {
@@ -488,8 +490,10 @@ fn hidden_soft_hyphen_is_no_hyphenation_point_when_hidden_text_is_not_shown() {
 fn hidden_text_adds_no_line_break_opportunity_when_not_shown() {
     // "xx ab" + hidden soft hyphen or space + "cdef", in a column where "xx ab-" and "abcdef" fit
     // but "xx abcdef" does not. Measured in Word (hidden text not printed): "xx" / "abcdef" both times.
+    // In the bundled Source Sans 3, so the column fits the same text whatever fonts the machine has.
     for hidden in ["\u{ad}", " "] {
         let mut d = Document::from_text(&format!("xx ab{hidden}cdef"));
+        d.styles.default_chr.font = Some("Source Sans 3".into());
         let end = 5 + hidden.len();
         d.format_range(&Pos::body(0, 5), &Pos::body(0, end), &|c| c.hidden = Some(true)).unwrap();
         d.format_paragraphs(&Pos::body(0, 0), &Pos::body(0, 0), &|p| p.indent_right = Some(468.0 - 40.0)).unwrap();
@@ -3756,21 +3760,18 @@ fn exact_rows_add_only_the_bottom_margin() {
 #[test]
 fn exact_row_moves_whole() {
     use wordcraft_doc::props::HeightRule;
-    let lines: Vec<String> = (1..=200).map(|i| format!("Filler {i}")).collect();
-    let one_page = lay(&Document::from_text(&lines.join("\n"))).pages[0].items.iter().filter(|i| matches!(i, Placed::Lines { .. })).count();
-    let mut t = Table::new(1, 1, 400.0);
-    t.rows[0].props.height = Some(63.6);
-    t.rows[0].props.height_rule = HeightRule::Exact;
-    for height in [40.0, 50.0] {
-        let mut p = wordcraft_doc::Paragraph::with_text("", Default::default());
-        p.insert_object(0, picture(30.0, height, Default::default()), &Default::default()).unwrap();
-        t.rows[0].cells[0].blocks.push(wordcraft_doc::para_block(p));
-    }
-    let mut d = Document::from_text(&lines[..one_page - 2].join("\n"));
-    let end = d.body.len();
-    d.insert_block(StoryRef::Body, &Path::top(end), wordcraft_doc::Block::Table(t)).unwrap();
-    let l = lay(&d);
-    let row_page = l.pages.iter().position(|p| p.items.iter().any(|i| matches!(i, Placed::Cell { row: 0, .. })));
+    // An exactly 63.6 pt row with 49 pt left on the page: the first picture's line would fit, but
+    // the row doesn't split.
+    let (_, pages) = at_least_rows(49.0, 1, |t| {
+        t.rows[0].props.height = Some(63.6);
+        t.rows[0].props.height_rule = HeightRule::Exact;
+        for height in [40.0, 50.0] {
+            let mut p = wordcraft_doc::Paragraph::with_text("", Default::default());
+            p.insert_object(0, picture(30.0, height, Default::default()), &Default::default()).unwrap();
+            t.rows[0].cells[0].blocks.push(wordcraft_doc::para_block(p));
+        }
+    });
+    let row_page = pages.iter().position(|p| p.contains(&0));
     assert_eq!(row_page, Some(1), "Word keeps an exact row together when it fits on the next page");
 }
 
@@ -4320,9 +4321,13 @@ fn a_floating_table_ignores_a_paragraphs_empty_lines() {
     use wordcraft_doc::para::Anchor;
     use wordcraft_doc::props::TableFloat;
 
+    // The empty paragraphs and the empty lines of "Visible" run beside the table, and the text ends
+    // too low on the page for the table to fit below it. In the bundled Source Sans 3, so the text
+    // ends there whatever fonts the machine has.
     let mut doc = Document::from_text(&[""; 9].join("\n"));
+    doc.styles.default_chr.font = Some("Source Sans 3".into());
     doc.body.push(wordcraft_doc::para_block(wordcraft_doc::Paragraph::with_text("Visible\n\n\n", Default::default())));
-    doc.body.extend((0..14).map(|_| wordcraft_doc::para_block(wordcraft_doc::Paragraph::new())));
+    doc.body.extend((0..9).map(|_| wordcraft_doc::para_block(wordcraft_doc::Paragraph::new())));
     let mut table = Table::new(12, 1, 300.0);
     for (i, row) in table.rows.iter_mut().enumerate() {
         row.cells[0].blocks = vec![wordcraft_doc::para_block(wordcraft_doc::Paragraph::with_text(&format!("Approval {i}"), Default::default()))];
@@ -4959,19 +4964,12 @@ fn a_row_with_less_room_than_its_minimum_height_moves_on_whole() {
     // Measured in Word: with 49 pt left on the page, a row of eight lines splits, but the same row
     // with an at-least height of 63.6 pt goes to the next page whole.
     let first_row_line_page = |min: Option<f32>| {
-        let lines: Vec<String> = (1..=200).map(|i| format!("Filler {i}")).collect();
-        let one_page = lay(&Document::from_text(&lines.join("\n"))).pages[0].items.iter().filter(|i| matches!(i, Placed::Lines { .. })).count();
-        let mut t = Table::new(1, 1, 400.0);
-        t.rows[0].props.height = min;
-        t.rows[0].props.height_rule = HeightRule::AtLeast;
-        t.rows[0].cells[0].blocks =
-            (1..=8).map(|k| wordcraft_doc::para_block(wordcraft_doc::Paragraph::with_text(&format!("Row line {k}"), Default::default()))).collect();
-        // Fill the page, leaving two filler paragraphs' room (less than 63.6 pt) for the row.
-        let mut d = Document::from_text(&lines[..one_page - 2].join("\n"));
-        let end = d.body.len();
-        d.insert_block(StoryRef::Body, &Path::top(end), wordcraft_doc::Block::Table(t)).unwrap();
-        let l = lay(&d);
-        l.pages.iter().position(|p| p.items.iter().any(|i| matches!(i, Placed::Lines { path, .. } if path.0.first() == Some(&(end as u32)))))
+        let (l, _) = at_least_rows(49.0, 1, |t| {
+            t.rows[0].props.height = min;
+            t.rows[0].props.height_rule = HeightRule::AtLeast;
+            t.rows[0].cells[0].blocks = lines_in_cell(8, "Row line");
+        });
+        l.pages.iter().position(|p| p.items.iter().any(|i| matches!(i, Placed::Lines { path, .. } if path.0.first() == Some(&1))))
     };
     assert_eq!(first_row_line_page(None), Some(0), "a row without a minimum height splits");
     assert_eq!(first_row_line_page(Some(63.6)), Some(1), "a row with a minimum height that doesn't fit moves on");
@@ -4979,11 +4977,14 @@ fn a_row_with_less_room_than_its_minimum_height_moves_on_whole() {
 
 /// #1742: a paragraph that leaves `room` points of the letter page's 648 pt body, then the table
 /// `build` shapes (one 468 pt column, `rows` rows of one short line each); with `room` 648 the
-/// table comes first, at the top of the page. Returns the layout and, per page, the table rows
-/// that have a cell there.
+/// table comes first, at the top of the page. The paragraph's one line is exactly 14 pt, so the
+/// room is the same whatever fonts the machine has. Returns the layout and, per page, the table
+/// rows that have a cell there.
 fn at_least_rows(room: f32, rows: usize, build: impl Fn(&mut Table)) -> (DocLayout, Vec<Vec<usize>>) {
     let mut d = Document::from_text("Text above the table");
-    d.para_mut(StoryRef::Body, &Path::top(0)).unwrap().props.space_after = Some(648.0 - room - 14.0);
+    let props = &mut d.para_mut(StoryRef::Body, &Path::top(0)).unwrap().props;
+    props.line_spacing = Some(wordcraft_doc::props::LineSpacing::Exactly(14.0));
+    props.space_after = Some(648.0 - room - 14.0);
     let mut t = Table::new(rows, 1, 468.0);
     build(&mut t);
     let at = if room >= 648.0 { 0 } else { 1 };
@@ -5068,11 +5069,20 @@ fn an_at_least_row_at_the_top_of_a_page_splits_instead_of_moving_on() {
     use wordcraft_doc::props::HeightRule;
     // At the top of a page (or under the header rows repeated there) moving on gains nothing: a
     // row taller than the room splits, and pagination ends.
+    // The paragraph after the table may go to a page of its own, depending on the font's line
+    // height: only the pages up to the row's last part count.
+    let row_pages = |mut pages: Vec<Vec<usize>>| {
+        while pages.last().is_some_and(Vec::is_empty) {
+            pages.pop();
+        }
+        pages
+    };
     let (_, pages) = at_least_rows(648.0, 1, |t| {
         t.rows[0].props.height = Some(700.0);
         t.rows[0].props.height_rule = HeightRule::AtLeast;
         t.rows[0].cells[0].blocks = lines_in_cell(80, "Line");
     });
+    let pages = row_pages(pages);
     assert!(pages.len() >= 2 && pages.iter().all(|p| p == &vec![0]), "{pages:?}");
     // A 100 pt header row, then a row at least 600 pt with 80 lines: under the header only 548 pt
     // are left on each page, so the row splits there instead of running past the bottom margin.
@@ -5084,6 +5094,7 @@ fn an_at_least_row_at_the_top_of_a_page_splits_instead_of_moving_on() {
         t.rows[1].props.height_rule = HeightRule::AtLeast;
         t.rows[1].cells[0].blocks = lines_in_cell(80, "Line");
     });
+    let pages = row_pages(pages);
     assert!(pages.len() >= 3 && pages.iter().all(|p| p == &vec![0, 1]), "{pages:?}");
     for p in &l.pages {
         let bottom = p.items.iter().filter_map(|i| if let Placed::Cell { rect, .. } = i { Some(rect.y + rect.h) } else { None }).fold(0.0, f32::max);
@@ -5595,7 +5606,9 @@ fn tight_wrap_follows_an_ellipse() {
         let edge = contour(l.0, l.1).1;
         assert!(l.2 <= edge + 3.0 && l.2 < 169.0 - 10.0, "{what} hugs the curve at {edge}: {l:?} in {tight:?}");
     }
-    assert!(line(&|top| top > 65.0 && top < 80.0).2 >= 160.0, "beside the widest part: {tight:?}");
+    // The line across the middle (y = 80), wherever the line height puts its top.
+    let widest = *tight.iter().find(|l| l.0 <= 80.0 && l.1 > 80.0 && l.2 > 60.0).unwrap();
+    assert!(widest.2 >= 160.0, "beside the widest part: {tight:?}");
     // A convex shape has no gaps for Through to use: it wraps as Tight.
     assert_eq!(through, tight);
 }
