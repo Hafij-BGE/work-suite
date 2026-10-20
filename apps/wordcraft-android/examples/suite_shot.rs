@@ -4,7 +4,7 @@
 //! `cargo run -p wordcraft-android --example suite_shot -- out.ppm [home|writer|slides|sheets] [dark|light] [width height scale] [ribbon tab]`
 //!
 //! With a ribbon tab, the app shows its built-in sample (Writer's handbook, Slides' sample deck,
-//! Sheets' first sample workbook).
+//! Sheets' first sample workbook). `WORKSUITE_SHOT_OPEN=path` opens a file in its app first.
 //!
 //! The window has a 24-point status bar and a 16-point gesture bar, as a phone does.
 
@@ -34,6 +34,10 @@ fn main() {
     suite.set_insets(Some([0, (24.0 * ppp) as i32, 0, (16.0 * ppp) as i32, wp, hp]));
     if app.is_some() {
         suite.switch(&ctx, app);
+    }
+    // A file to open in its app (WORKSUITE_SHOT_OPEN=path), as "Open with" does.
+    if let Some(path) = std::env::var_os("WORKSUITE_SHOT_OPEN") {
+        suite.open_in_app(&ctx, &path.to_string_lossy());
     }
     // A ribbon tab to show, over the app's sample.
     if let Some(tab) = args.get(6) {
@@ -98,7 +102,7 @@ fn main() {
         let egui::epaint::Primitive::Mesh(mesh) = p.primitive else { continue };
         let clip = Rect::from_min_max(pos2(p.clip_rect.min.x * ppp, p.clip_rect.min.y * ppp), pos2(p.clip_rect.max.x * ppp, p.clip_rect.max.y * ppp));
         let tex = textures.get(&mesh.texture_id);
-        for tri in mesh.indices.chunks_exact(3) {
+        for tri in mesh.indices.as_chunks::<3>().0 {
             let v = [&mesh.vertices[tri[0] as usize], &mesh.vertices[tri[1] as usize], &mesh.vertices[tri[2] as usize]];
             let pt = |i: usize| pos2(v[i].pos.x * ppp, v[i].pos.y * ppp);
             let (a, b, c) = (pt(0), pt(1), pt(2));
