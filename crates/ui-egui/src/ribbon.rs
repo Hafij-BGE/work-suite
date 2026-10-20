@@ -776,7 +776,8 @@ fn caret_lang_tag(app: &WordApp) -> Option<String> {
 /// Word shows the missing name in the font box too; the tooltip and the status bar say it's missing.
 pub(crate) fn missing_font_substitute(font: &str) -> Option<String> {
     let font = font.trim();
-    if font.is_empty() {
+    // Symbol, Wingdings…: their characters are drawn as the Unicode symbols they stand for.
+    if font.is_empty() || wordcraft_doc::symbol_fonts::is_symbol_font(font) {
         return None;
     }
     let r = wordcraft_fonts::word::resolve(font, false, false);

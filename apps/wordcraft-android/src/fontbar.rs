@@ -500,7 +500,14 @@ fn missing_fonts(apps: &mut Apps, active: AppKind) -> Option<(String, Vec<Missin
         }
         AppKind::Slides => {
             let d = apps.slides.as_ref()?.session.active()?;
-            let list = d.missing_fonts.iter().map(|n| Missing { name: n.clone(), shown_with: None }).collect();
+            // Slides draws symbol fonts' characters (Wingdings bullets…) as Unicode symbols, as
+            // Writer does: nothing is missing.
+            let list = d
+                .missing_fonts
+                .iter()
+                .filter(|n| !wordcraft_doc::symbol_fonts::is_symbol_font(n))
+                .map(|n| Missing { name: n.clone(), shown_with: None })
+                .collect();
             Some((format!("slides:{}", d.uid), list))
         }
         AppKind::Sheets => {

@@ -510,6 +510,8 @@ pub struct MissingFont {
 /// The fonts `layout`'s text is set in that aren't installed, each once, in the order first met,
 /// with the family shown instead (Word's substitutes, [`wordcraft_fonts::word::resolve`]). A
 /// substitute's metrics differ, so these documents can break lines and pages differently from Word.
+/// Word's symbol fonts (Symbol, Wingdings…) aren't listed: their characters are drawn as the
+/// Unicode symbols they stand for, so nothing is missing.
 pub fn missing_fonts(doc: &Document, layout: &DocLayout) -> Vec<MissingFont> {
     let mut out: Vec<MissingFont> = Vec::new();
     let mut seen = std::collections::HashSet::new();
@@ -518,7 +520,7 @@ pub fn missing_fonts(doc: &Document, layout: &DocLayout) -> Vec<MissingFont> {
             let Placed::Lines { para, .. } = item else { continue };
             for st in &para.styles {
                 let font = st.rc.font.trim();
-                if font.is_empty() || !seen.insert(font.to_lowercase()) {
+                if font.is_empty() || !seen.insert(font.to_lowercase()) || wordcraft_doc::symbol_fonts::is_symbol_font(font) {
                     continue;
                 }
                 let r = wordcraft_fonts::word::resolve(para::lookup_family(doc, font), false, false);

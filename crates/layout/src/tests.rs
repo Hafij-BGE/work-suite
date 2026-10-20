@@ -3893,6 +3893,19 @@ fn missing_fonts_lists_each_absent_family_once_with_its_substitute() {
     assert!(!missing.iter().any(|m| m.requested == wordcraft_fonts::FALLBACK_FAMILY), "{missing:?}");
 }
 
+/// Text in Word's symbol fonts is drawn as the Unicode symbols it stands for, so those fonts
+/// aren't listed as missing (a CV's Symbol bullets on a phone).
+#[test]
+fn symbol_fonts_are_not_listed_as_missing() {
+    let mut d = Document::from_text("\u{F0B7} Bullet\n\u{F0FC} Tick\nText");
+    for (para, len, font) in [(0, 8, "Symbol"), (1, 6, "Wingdings"), (2, 4, "Nowhere Sans Zq")] {
+        d.format_range(&Pos::body(para, 0), &Pos::body(para, len), &|c| c.font = Some(font.to_string())).unwrap();
+    }
+    let missing: Vec<_> = crate::missing_fonts(&d, &lay(&d)).into_iter().map(|m| m.requested).collect();
+    assert!(missing.iter().any(|m| m == "Nowhere Sans Zq"), "{missing:?}");
+    assert!(!missing.iter().any(|m| m == "Symbol" || m == "Wingdings"), "{missing:?}");
+}
+
 #[test]
 fn space_shrinking_is_only_for_justified_text() {
     let text = "We tie the spend to a pipe and to the books, so it is in an ad hoc view of all of it. ".repeat(40);

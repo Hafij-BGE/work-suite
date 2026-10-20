@@ -74,6 +74,11 @@ const TWINS: &[(&str, &str)] = &[
 /// Microsoft fonts no one may download for free (they come with Windows and Office): only a
 /// stand-in from Google Fonts, when there is one.
 const NOT_FREE: &[&str] = &[
+    "symbol",
+    "wingdings",
+    "webdings",
+    "marlett",
+    "mt extra",
     "calibri",
     "cambria",
     "candara",
@@ -298,6 +303,8 @@ mod tests {
         assert_eq!(sources("times new roman")[0], Source::Core("times32.exe"));
         assert_eq!(sources("Calibri"), [Source::Google { family: "Carlito".into(), twin: true }]);
         assert!(sources("Consolas").is_empty(), "no free download, no stand-in");
+        assert!(sources("Symbol").is_empty() && sources("Wingdings 2").is_empty(), "not on Google Fonts");
+        assert_eq!(sources("Webdings"), [Source::Core("webdin32.exe")]);
         assert_eq!(sources("Montserrat"), [Source::Google { family: "Montserrat".into(), twin: false }]);
         assert!(sources("../etc").is_empty());
         assert_eq!(sources("Aptos")[0].vendor(), "Microsoft");
