@@ -3,6 +3,28 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.5: missing fonts, fixed in two taps
+
+- **A red bar says when a font is missing.** When a document, presentation or workbook uses a
+  font this device doesn't have, a bar over the app names it ("“Aptos” is not available on this
+  device") and the font shown in its place. Tap **Download font** or **Choose font**:
+  - **Download from Microsoft:** Aptos, and Microsoft's free Core fonts for the Web (Arial, Times
+    New Roman, Courier New, Georgia, Verdana…), straight from Microsoft, for this device only.
+  - **Download from Google Fonts:** any font Google Fonts has. For Calibri and Cambria, which have no
+    free download, Carlito and Caladea: the same widths, so lines and pages break as in Word.
+  - **Add a font file…:** a .ttf or .otf file on this device.
+  - **Choose a similar font:** an installed font in its place, throughout the document (Undo takes
+    it back).
+
+  A font installed in one app works in all three, and stays after a restart. "Don't show this
+  again" hides the bar; the home screen turns it back on.
+- **Documents open for reading.** A file opened from the home screen or with Open with shows in
+  Read Mode: one column that fits the screen, with page buttons. Tap **Edit Document** to edit.
+- **The status bar fits a phone:** the page, word count and font notice no longer run into each
+  other or into the zoom controls.
+- WorkSuite now uses the internet, only for a font download you ask for. Your documents never
+  leave the device.
+
 ## Updating from 0.9.3: uninstall it first
 
 0.9.4 is signed with a new release key, because 0.9.3's key was lost. Android won't install it over
