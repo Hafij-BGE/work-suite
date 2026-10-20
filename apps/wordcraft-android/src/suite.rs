@@ -716,6 +716,7 @@ impl Suite {
         let font = |size: f32| egui::FontId::proportional(size);
         let mut go = None;
         let mut open_file = false;
+        let mut import_fonts = false;
         egui::CentralPanel::default().frame(egui::Frame::NONE.fill(pal.bg)).show(ui, |ui| {
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 let avail = ui.available_width();
@@ -768,6 +769,20 @@ impl Suite {
                         if open_button(ui, width.min(if wide { 360.0 } else { width }), &pal).clicked() {
                             open_file = true;
                         }
+                        // Fonts from a font file or a .zip of fonts (copied from a computer, say),
+                        // for all three apps.
+                        ui.add_space(10.0);
+                        ui.horizontal_wrapped(|ui| {
+                            if ui.link(egui::RichText::new("Import fonts…").font(font(13.5))).clicked() {
+                                import_fonts = true;
+                            }
+                            ui.label(egui::RichText::new("a font file or a .zip of fonts").font(font(13.0)).color(pal.dim));
+                        });
+                        if let Some((text, ok)) = self.fontbar.recent_note(ctx.input(|i| i.time)) {
+                            let color = if ok { Color32::from_rgb(0x2F, 0x9E, 0x5B) } else { Color32::from_rgb(0xD9, 0x30, 0x25) };
+                            ui.add(egui::Label::new(egui::RichText::new(text).font(font(13.0)).color(color)).wrap());
+                            ctx.request_repaint_after(std::time::Duration::from_millis(500));
+                        }
                         if !self.fontbar.enabled {
                             ui.add_space(10.0);
                             ui.horizontal_wrapped(|ui| {
@@ -811,6 +826,9 @@ impl Suite {
         }
         if open_file {
             self.picker.open("office", Wait::Launcher);
+        }
+        if import_fonts {
+            self.picker.open("font", Wait::Font);
         }
     }
 }

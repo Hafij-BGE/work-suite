@@ -149,7 +149,7 @@ fn aptos() -> Result<PathBuf, String> {
 }
 
 /// The font files in a zip, written to `dir`; how many.
-fn unzip_fonts(bytes: &[u8], dir: &std::path::Path) -> Result<usize, String> {
+pub(crate) fn unzip_fonts(bytes: &[u8], dir: &std::path::Path) -> Result<usize, String> {
     let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|e| format!("Couldn't read the download: {e}"))?;
     let mut n = 0;
     for i in 0..zip.len() {
@@ -159,7 +159,7 @@ fn unzip_fonts(bytes: &[u8], dir: &std::path::Path) -> Result<usize, String> {
             continue;
         }
         let mut data = Vec::new();
-        if f.read_to_end(&mut data).is_ok() {
+        if (&mut f).take(MAX_DOWNLOAD).read_to_end(&mut data).is_ok() {
             std::fs::write(dir.join(name), data).map_err(|e| e.to_string())?;
             n += 1;
         }

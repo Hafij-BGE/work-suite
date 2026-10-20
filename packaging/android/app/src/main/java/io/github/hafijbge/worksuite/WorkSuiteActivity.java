@@ -203,8 +203,11 @@ public class WorkSuiteActivity extends NativeActivity {
         "text/xml",
         "application/json",
     };
-    /** Font files, as file managers and downloads label them (often as octet-stream). */
+    /** Font files and .zip files of fonts, as file managers and downloads label them (often as
+     *  octet-stream). */
     private static final String[] FONTS = {
+        "application/zip",
+        "application/x-zip-compressed",
         "font/ttf",
         "font/otf",
         "font/collection",
