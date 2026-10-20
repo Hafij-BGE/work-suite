@@ -132,7 +132,7 @@ impl FontBar {
         &self.missing
     }
 
-    /// Installs the font file the picker gave (`path`), in every app.
+    /// Installs the fonts the picker gave (`path`: a font file, or a .zip of fonts), in every app.
     pub fn add_file(&mut self, apps: &mut Apps, active: AppKind, path: &str, now: f64) {
         let note = match font_file_folder(path) {
             Ok(dir) => {
@@ -143,6 +143,11 @@ impl FontBar {
             Err(e) => (e, false),
         };
         self.finish(note, now);
+    }
+
+    /// The last import's or download's outcome while it is recent: (text, it worked).
+    pub fn recent_note(&self, now: f64) -> Option<(&str, bool)> {
+        self.note.as_ref().filter(|(_, _, at)| now - at < 12.0).map(|(t, ok, _)| (t.as_str(), *ok))
     }
 
     fn finish(&mut self, note: (String, bool), now: f64) {
@@ -365,7 +370,7 @@ fn card(bar: &mut FontBar, apps: &mut Apps, active: AppKind, ui: &mut Ui, c: &Co
                     }
                     first = false;
                 }
-                if option_row(ui, "📁", "Add a font file…", "A .ttf or .otf file on this device", None, c, false).clicked() {
+                if option_row(ui, "📁", "Import fonts…", "A font file, or a .zip of fonts, on this device", None, c, false).clicked() {
                     action = Some(Action::PickFile);
                 }
                 if option_row(ui, "Aa", "Choose a similar font", "Use an installed font in its place", first.then_some(c.bg), c, false).clicked() {
@@ -500,7 +505,14 @@ fn missing_fonts(apps: &mut Apps, active: AppKind) -> Option<(String, Vec<Missin
         }
         AppKind::Slides => {
             let d = apps.slides.as_ref()?.session.active()?;
-            let list = d.missing_fonts.iter().map(|n| Missing { name: n.clone(), shown_with: None }).collect();
+            // Slides draws symbol fonts' characters (Wingdings bullets…) as Unicode symbols, as
+            // Writer does: nothing is missing.
+            let list = d
+                .missing_fonts
+                .iter()
+                .filter(|n| !wordcraft_doc::symbol_fonts::is_symbol_font(n))
+                .map(|n| Missing { name: n.clone(), shown_with: None })
+                .collect();
             Some((format!("slides:{}", d.uid), list))
         }
         AppKind::Sheets => {
@@ -601,18 +613,34 @@ fn writer_install(dir: &Path) -> serde_json::Value {
     json!({ "added": added, "notFound": [] })
 }
 
-/// A folder holding a copy of the picked font file, for [`install_folder`].
+/// The largest .zip of fonts read (a few hundred fonts).
+const MAX_ZIP: u64 = 512 << 20;
+
+/// A folder holding the picked font file, or the fonts in the picked .zip, for [`install_folder`].
 fn font_file_folder(path: &str) -> Result<PathBuf, String> {
     let src = Path::new(path);
     let name = src.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "font.ttf".into());
     let lower = name.to_lowercase();
-    if ![".ttf", ".otf", ".ttc", ".woff", ".woff2"].iter().any(|e| lower.ends_with(e)) {
-        return Err(format!("{name} isn't a font file (.ttf or .otf)."));
+    let zip = lower.ends_with(".zip");
+    if !zip && ![".ttf", ".otf", ".ttc", ".woff", ".woff2"].iter().any(|e| lower.ends_with(e)) {
+        return Err(format!("{name} isn't a font file (.ttf or .otf) or a .zip of fonts."));
     }
     let dir = std::env::temp_dir().join(format!("worksuite-fontfile-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    std::fs::copy(src, dir.join(&name)).map_err(|e| format!("Couldn't read {name}: {e}"))?;
+    if zip {
+        let size = std::fs::metadata(src).map_err(|e| format!("Couldn't read {name}: {e}"))?.len();
+        if size > MAX_ZIP {
+            return Err(format!("{name} is larger than {} MB.", MAX_ZIP >> 20));
+        }
+        let bytes = std::fs::read(src).map_err(|e| format!("Couldn't read {name}: {e}"))?;
+        if crate::fontget::unzip_fonts(&bytes, &dir)? == 0 {
+            let _ = std::fs::remove_dir_all(&dir);
+            return Err(format!("{name} has no font files (.ttf, .otf or .ttc) in it."));
+        }
+    } else {
+        std::fs::copy(src, dir.join(&name)).map_err(|e| format!("Couldn't read {name}: {e}"))?;
+    }
     Ok(dir)
 }
 
@@ -953,6 +981,33 @@ mod tests {
     fn only_font_files_can_be_added() {
         assert!(font_file_folder("/x/notes.txt").is_err());
         assert!(font_file_folder("/no/such/Font.ttf").is_err());
+        assert!(font_file_folder("/no/such/fonts.zip").is_err());
+    }
+
+    #[test]
+    fn a_zip_of_fonts_is_unpacked_for_installing() {
+        use std::io::Write;
+        let tmp = std::env::temp_dir().join(format!("worksuite-fontzip-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&tmp);
+        let zip_path = tmp.join("My Fonts.ZIP");
+        {
+            let mut z = zip::ZipWriter::new(std::fs::File::create(&zip_path).unwrap());
+            let o = zip::write::SimpleFileOptions::default();
+            for (name, data) in [("fonts/One.ttf", &b"one"[..]), ("Two.OTF", b"two"), ("readme.txt", b"no")] {
+                z.start_file(name, o).unwrap();
+                z.write_all(data).unwrap();
+            }
+            z.finish().unwrap();
+        }
+        let dir = font_file_folder(&zip_path.to_string_lossy()).unwrap();
+        let mut got: Vec<String> = std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect();
+        got.sort();
+        assert_eq!(got, ["One.ttf", "Two.OTF"], "the fonts, without folders, and nothing else");
+        let empty = tmp.join("empty.zip");
+        zip::ZipWriter::new(std::fs::File::create(&empty).unwrap()).finish().unwrap();
+        assert!(font_file_folder(&empty.to_string_lossy()).is_err(), "a zip without fonts says so");
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     #[test]

@@ -74,6 +74,11 @@ const TWINS: &[(&str, &str)] = &[
 /// Microsoft fonts no one may download for free (they come with Windows and Office): only a
 /// stand-in from Google Fonts, when there is one.
 const NOT_FREE: &[&str] = &[
+    "symbol",
+    "wingdings",
+    "webdings",
+    "marlett",
+    "mt extra",
     "calibri",
     "cambria",
     "candara",
@@ -144,7 +149,7 @@ fn aptos() -> Result<PathBuf, String> {
 }
 
 /// The font files in a zip, written to `dir`; how many.
-fn unzip_fonts(bytes: &[u8], dir: &std::path::Path) -> Result<usize, String> {
+pub(crate) fn unzip_fonts(bytes: &[u8], dir: &std::path::Path) -> Result<usize, String> {
     let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|e| format!("Couldn't read the download: {e}"))?;
     let mut n = 0;
     for i in 0..zip.len() {
@@ -154,7 +159,7 @@ fn unzip_fonts(bytes: &[u8], dir: &std::path::Path) -> Result<usize, String> {
             continue;
         }
         let mut data = Vec::new();
-        if f.read_to_end(&mut data).is_ok() {
+        if (&mut f).take(MAX_DOWNLOAD).read_to_end(&mut data).is_ok() {
             std::fs::write(dir.join(name), data).map_err(|e| e.to_string())?;
             n += 1;
         }
@@ -298,6 +303,8 @@ mod tests {
         assert_eq!(sources("times new roman")[0], Source::Core("times32.exe"));
         assert_eq!(sources("Calibri"), [Source::Google { family: "Carlito".into(), twin: true }]);
         assert!(sources("Consolas").is_empty(), "no free download, no stand-in");
+        assert!(sources("Symbol").is_empty() && sources("Wingdings 2").is_empty(), "not on Google Fonts");
+        assert_eq!(sources("Webdings"), [Source::Core("webdin32.exe")]);
         assert_eq!(sources("Montserrat"), [Source::Google { family: "Montserrat".into(), twin: false }]);
         assert!(sources("../etc").is_empty());
         assert_eq!(sources("Aptos")[0].vendor(), "Microsoft");
