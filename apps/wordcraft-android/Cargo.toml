@@ -32,6 +32,14 @@ deckcraft-engine = { path = "../../deckcraft/crates/engine" }
 deckcraft-color = { path = "../../deckcraft/crates/color" }
 gridcraft-ui-egui = { path = "../../gridcraft/crates/ui-egui" }
 gridcraft-engine = { path = "../../gridcraft/crates/engine" }
+# The font bar (src/fontbar.rs): the apps' font databases, and downloads of the fonts a document
+# needs from Google Fonts and Microsoft (HTTPS with the bundled Mozilla roots; Microsoft's fonts
+# come in a zip or a cabinet).
+wordcraft-fonts = { workspace = true }
+deckcraft-fonts = { path = "../../deckcraft/crates/fonts" }
+ureq = { version = "3", default-features = false, features = ["rustls", "gzip"] }
+zip = { workspace = true }
+cab = "0.6"
 egui = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true }

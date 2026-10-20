@@ -4,7 +4,8 @@
 //! `cargo run -p wordcraft-android --example suite_shot -- out.ppm [home|writer|slides|sheets] [dark|light] [width height scale] [ribbon tab]`
 //!
 //! With a ribbon tab, the app shows its built-in sample (Writer's handbook, Slides' sample deck,
-//! Sheets' first sample workbook). `WORKSUITE_SHOT_OPEN=path` opens a file in its app first.
+//! Sheets' first sample workbook). `WORKSUITE_SHOT_OPEN=path` opens a file in its app first;
+//! `WORKSUITE_SHOT_FONTCARD=1` (or `similar`) opens the font bar's card.
 //!
 //! The window has a 24-point status bar and a 16-point gesture bar, as a phone does.
 
@@ -35,9 +36,13 @@ fn main() {
     if app.is_some() {
         suite.switch(&ctx, app);
     }
-    // A file to open in its app (WORKSUITE_SHOT_OPEN=path), as "Open with" does.
+    // A file to open in its app (WORKSUITE_SHOT_OPEN=path), as "Open with" does, and the font
+    // bar's card over it (WORKSUITE_SHOT_FONTCARD=1, or =similar for its similar fonts).
     if let Some(path) = std::env::var_os("WORKSUITE_SHOT_OPEN") {
         suite.open_in_app(&ctx, &path.to_string_lossy());
+    }
+    if let Ok(card) = std::env::var("WORKSUITE_SHOT_FONTCARD") {
+        suite.fontbar.open_card(card == "similar");
     }
     // A ribbon tab to show, over the app's sample.
     if let Some(tab) = args.get(6) {

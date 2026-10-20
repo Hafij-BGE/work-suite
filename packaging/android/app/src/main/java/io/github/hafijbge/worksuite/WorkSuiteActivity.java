@@ -203,6 +203,19 @@ public class WorkSuiteActivity extends NativeActivity {
         "text/xml",
         "application/json",
     };
+    /** Font files, as file managers and downloads label them (often as octet-stream). */
+    private static final String[] FONTS = {
+        "font/ttf",
+        "font/otf",
+        "font/collection",
+        "font/sfnt",
+        "application/x-font-ttf",
+        "application/x-font-otf",
+        "application/x-font-truetype",
+        "application/font-sfnt",
+        "application/vnd.ms-opentype",
+        "application/octet-stream",
+    };
     private static final String[] PRESENTATIONS = {
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
@@ -237,7 +250,7 @@ public class WorkSuiteActivity extends NativeActivity {
 
     /**
      * Show the system picker to open a file; {@code purpose} is "document", "presentation",
-     * "spreadsheet", "office" (any of the three), "picture", or anything else for any file.
+     * "spreadsheet", "office" (any of the three), "picture", "font", or anything else for any file.
      */
     public void pickOpen(String purpose) {
         synchronized (LOCK) {
@@ -258,6 +271,8 @@ public class WorkSuiteActivity extends NativeActivity {
             types = concat(SPREADSHEETS);
         } else if ("office".equals(purpose)) {
             types = concat(DOCUMENTS, PRESENTATIONS, SPREADSHEETS);
+        } else if ("font".equals(purpose)) {
+            types = concat(FONTS);
         }
         if ("picture".equals(purpose)) {
             intent.setType("image/*");

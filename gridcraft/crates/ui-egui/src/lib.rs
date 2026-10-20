@@ -258,7 +258,7 @@ pub struct SheetApp {
     /// when the workbook changes.
     fonts_seen: (u64, u64),
     /// Workbooks (by uid) whose missing fonts have been mentioned in the notice bar.
-    fonts_noted: std::collections::HashSet<u64>,
+    pub fonts_noted: std::collections::HashSet<u64>,
     /// Set while a font-set change is pending activation: skip this frame's paint, like the
     /// startup `fonts_ready` gate (egui applies new definitions at the next pass).
     fonts_rebind: bool,
