@@ -458,7 +458,7 @@ pub struct SlideApp {
     /// A brief notice over the bottom of the window (missing fonts on opening a file).
     pub toast: Option<toast::Toast>,
     /// Documents (by uid) whose missing fonts have been mentioned.
-    fonts_noted: std::collections::HashSet<u64>,
+    pub fonts_noted: std::collections::HashSet<u64>,
     pub perf: Perf,
     /// Synthetic input events (control channel `ui.click` etc.), injected one per frame.
     pub synthetic: Vec<egui::Event>,

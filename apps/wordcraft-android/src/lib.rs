@@ -19,6 +19,8 @@
 
 #[cfg(target_os = "android")]
 mod android;
+pub mod fontbar;
+mod fontget;
 #[cfg(target_os = "android")]
 mod saf;
 pub mod shell;

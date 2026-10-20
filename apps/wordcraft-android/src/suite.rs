@@ -81,7 +81,7 @@ impl AppKind {
 /// later through [`Suite::picked`].
 pub trait Files {
     /// Pick a file to open: `document`, `presentation`, `spreadsheet`, `office` (any of the three),
-    /// `picture`, or anything else for any file.
+    /// `picture`, `font`, or anything else for any file.
     fn pick_open(&self, purpose: &str) -> bool;
     /// Pick where to save a file called `name`.
     fn pick_save(&self, name: &str) -> bool;
@@ -102,6 +102,8 @@ pub enum Wait {
     Save { app: AppKind, name: String, bytes: Vec<u8> },
     /// The home screen's Open a file….
     Launcher,
+    /// The font bar's Add a font file….
+    Font,
 }
 
 impl Wait {
@@ -223,10 +225,13 @@ pub struct Suite {
     /// The colour behind the system bars, and whether it is dark (for their icons).
     pub chrome: Color32,
     pub chrome_dark: bool,
+    /// The bar over a document whose fonts aren't installed (src/fontbar.rs).
+    pub fontbar: crate::fontbar::FontBar,
 }
 
 impl Suite {
     pub fn new(picker: Rc<Picker>, paths: SuitePaths) -> Suite {
+        let fontbar_off = paths.writer_prefs.as_ref().and_then(|p| p.parent()).map(|d| d.join("font-notice-off"));
         Suite {
             active: None,
             settling: false,
@@ -246,6 +251,7 @@ impl Suite {
             eraser_lifted: false,
             chrome: Color32::BLACK,
             chrome_dark: true,
+            fontbar: crate::fontbar::FontBar::new(fontbar_off),
         }
     }
 
@@ -459,6 +465,12 @@ impl Suite {
                 Err(e) => log::warn!("{path}: {e}"),
             },
             (Wait::Save { app, name, bytes }, Some(path)) => self.save_to(app, &name, &bytes, &path),
+            (Wait::Font, Some(path)) => {
+                let now = ctx.input(|i| i.time);
+                let active = self.active.unwrap_or(AppKind::Writer);
+                let mut apps = crate::fontbar::Apps { writer: &mut self.writer, slides: &mut self.slides, sheets: &mut self.sheets };
+                self.fontbar.add_file(&mut apps, active, &path, now);
+            }
             (_, None) => {}
         }
         ctx.request_repaint();
@@ -581,7 +593,7 @@ impl Suite {
 
     /// Whether the app showing has something open that Escape closes.
     fn back_closes(&self, ctx: &egui::Context, kind: AppKind) -> bool {
-        if egui::Popup::is_any_open(ctx) {
+        if egui::Popup::is_any_open(ctx) || self.fontbar.card_open() {
             return true;
         }
         match kind {
@@ -651,6 +663,11 @@ impl Suite {
             egui::CentralPanel::default().show(ui, |_| {});
             ctx.request_repaint();
             return;
+        }
+        // Over the app: the bar saying the document's fonts aren't installed.
+        let mut apps = crate::fontbar::Apps { writer: &mut self.writer, slides: &mut self.slides, sheets: &mut self.sheets };
+        if crate::fontbar::show(&mut self.fontbar, &mut apps, active, ui) == Some(crate::fontbar::Request::PickFont) {
+            self.picker.open("font", Wait::Font);
         }
         match active {
             AppKind::Writer => {
@@ -751,6 +768,15 @@ impl Suite {
                         if open_button(ui, width.min(if wide { 360.0 } else { width }), &pal).clicked() {
                             open_file = true;
                         }
+                        if !self.fontbar.enabled {
+                            ui.add_space(10.0);
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(egui::RichText::new("Missing-font notices are off.").font(font(13.0)).color(pal.dim));
+                                if ui.link(egui::RichText::new("Turn on").font(font(13.0))).clicked() {
+                                    self.fontbar.set_enabled(true);
+                                }
+                            });
+                        }
                         ui.add_space(12.0);
                         ui.add(
                             egui::Label::new(
@@ -848,7 +874,8 @@ impl Palette {
     }
 }
 
-/// "Works offline": the app has no network access at all.
+/// "Works offline": nothing needs the network, and documents never leave the device (only a font
+/// download asked for in the font bar uses it).
 fn offline_badge(ui: &mut egui::Ui, pal: &Palette) {
     let text = "Works offline · your files stay on this device";
     let galley = ui.painter().layout_no_wrap(text.to_string(), egui::FontId::proportional(12.5), pal.text);
@@ -1221,6 +1248,45 @@ mod tests {
         // Edit Document: back to Print Layout, for editing.
         w.word.run("view.printLayout", json!({})).unwrap();
         assert!(!w.word.session.view.read_mode);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn the_font_bar_names_a_missing_font_and_a_similar_one_replaces_it() {
+        let ctx = egui::Context::default();
+        let dir = temp("fontbar");
+        let (mut s, _) = suite(true);
+        let txt = dir.join("letter.txt");
+        std::fs::write(&txt, "Dear committee").unwrap();
+        s.open_in_app(&ctx, &txt.to_string_lossy());
+        {
+            let w = s.writer.as_mut().unwrap();
+            w.word.run("select.all", json!({})).unwrap();
+            w.word.run("format.font", json!({"name": "Nowhere Grotesk"})).unwrap();
+        }
+        frames(&ctx, &mut s, 3);
+        assert_eq!(s.fontbar.missing().iter().map(|m| m.name.as_str()).collect::<Vec<_>>(), ["Nowhere Grotesk"], "the bar names it");
+        // Opening the card: Back closes it, and stays in Writer.
+        s.fontbar.open_card(true);
+        frames(&ctx, &mut s, 2);
+        assert!(s.fontbar.card_open());
+        let mut raw = back();
+        s.raw_input(&ctx, &mut raw);
+        ctx.run_ui(raw, |ui| {
+            s.logic(ui.ctx());
+            s.ui(ui);
+        })
+        .drop_without_applying_deltas();
+        frames(&ctx, &mut s, 1);
+        assert!(!s.fontbar.card_open(), "Back closes the card");
+        assert_eq!(s.active, Some(AppKind::Writer));
+        // A similar font in its place: one step Undo takes back.
+        let mut apps = crate::fontbar::Apps { writer: &mut s.writer, slides: &mut s.slides, sheets: &mut s.sheets };
+        assert!(crate::fontbar::replace_font(&mut apps, AppKind::Writer, "Nowhere Grotesk", "DejaVu Sans").unwrap() > 0);
+        let fonts = |s: &Suite| serde_json::to_string(&s.writer.as_ref().unwrap().word.session.doc).unwrap();
+        assert!(!fonts(&s).contains("Nowhere Grotesk"));
+        s.writer.as_mut().unwrap().word.run("edit.undo", json!({})).unwrap();
+        assert!(fonts(&s).contains("Nowhere Grotesk"), "Undo brings it back");
         let _ = std::fs::remove_dir_all(dir);
     }
 
