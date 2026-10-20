@@ -396,11 +396,15 @@ impl Suite {
             AppKind::Writer => {
                 if let Some(w) = &mut self.writer {
                     match w.word.run("file.open", json!({ "path": path })) {
-                        // The document shows at once, not the start screen it opened over.
+                        // The document shows at once, not the start screen it opened over, in Read Mode:
+                        // reading first, as on a phone; Edit Document (or the View tab) edits it.
                         Ok(_) => {
                             w.word.ui.backstage = false;
-                            w.word.canvas.want_focus = true;
                             self.writer_fresh = false;
+                            if let Err(e) = w.word.run("view.readMode", json!({})) {
+                                log::warn!("Read Mode: {e}");
+                                w.word.canvas.want_focus = true;
+                            }
                         }
                         Err(e) => log::warn!("{path}: {e}"),
                     }
@@ -1188,6 +1192,35 @@ mod tests {
         assert!(!w.word.ui.backstage, "the document shows, not the start screen it opened over");
         // Sheets kept its workbook while Writer showed.
         assert!(!s.sheets.as_ref().unwrap().session.documents().is_empty());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn opened_documents_start_in_read_mode_and_typing_leaves_them_alone() {
+        let ctx = egui::Context::default();
+        let dir = temp("read");
+        let (mut s, _) = suite(true);
+        let txt = dir.join("letter.txt");
+        std::fs::write(&txt, "Dear committee").unwrap();
+        s.open_in_app(&ctx, &txt.to_string_lossy());
+        frames(&ctx, &mut s, 3);
+        assert!(s.writer.as_ref().unwrap().word.session.view.read_mode, "an opened document shows in Read Mode");
+        let window = Rect::from_min_size(pos2(0.0, 0.0), vec2(420.0, 860.0));
+        for _ in 0..3 {
+            let mut raw = egui::RawInput { screen_rect: Some(window), events: vec![egui::Event::Text("x".into())], ..Default::default() };
+            s.raw_input(&ctx, &mut raw);
+            ctx.run_ui(raw, |ui| {
+                s.logic(ui.ctx());
+                s.ui(ui);
+            })
+            .drop_without_applying_deltas();
+        }
+        let w = s.writer.as_mut().unwrap();
+        assert_eq!(w.word.session.doc.plain_text(wordcraft_doc::StoryRef::Body).trim(), "Dear committee", "typing doesn't change it");
+        assert!(!w.word.session.dirty);
+        // Edit Document: back to Print Layout, for editing.
+        w.word.run("view.printLayout", json!({})).unwrap();
+        assert!(!w.word.session.view.read_mode);
         let _ = std::fs::remove_dir_all(dir);
     }
 
