@@ -3,6 +3,13 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.6: no font notice for Symbol and Wingdings
+
+- Documents with bullets or ticks in Word's symbol fonts (Symbol, Wingdings, Wingdings 2 and 3,
+  Webdings) no longer show the red "not available" bar: Writer and Slides draw those characters
+  as the symbols they stand for, so nothing is missing. An installed symbol font is still used.
+- The font bar offers Google Fonts only for fonts Google Fonts has.
+
 ## New in 0.9.5: missing fonts, fixed in two taps
 
 - **A red bar says when a font is missing.** When a document, presentation or workbook uses a
