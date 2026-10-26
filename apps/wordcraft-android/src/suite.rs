@@ -527,18 +527,18 @@ impl Suite {
         if self.active == Some(AppKind::Writer)
             && let Some(w) = &mut self.writer
         {
-            return w.raw_input(raw);
+            return w.raw_input(ctx, raw);
         }
         let wait = self.touch.process(raw);
         match self.active {
             Some(AppKind::Slides) => {
                 if let Some(s) = &mut self.slides {
-                    s.raw_input_hook(raw);
+                    s.raw_input_hook(ctx, raw);
                 }
             }
             Some(AppKind::Sheets) => {
                 if let Some(s) = &mut self.sheets {
-                    s.raw_input_hook(raw);
+                    s.raw_input_hook(ctx, raw);
                 }
             }
             _ => {}
@@ -907,7 +907,7 @@ fn offline_badge(ui: &mut egui::Ui, pal: &Palette) {
 /// One app on the home screen: a row on a phone (`row`), a tile on a wide screen.
 fn app_card(ui: &mut egui::Ui, r: Rect, kind: AppKind, pal: &Palette, row: bool) -> egui::Response {
     let resp = ui.interact(r, ui.id().with(("app_card", kind.label())), Sense::click());
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, kind.label()));
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, kind.label()));
     let p = ui.painter();
     let radius = CornerRadius::same(18);
     p.add(egui::Shadow { offset: [0, 3], blur: 14, spread: 0, color: pal.shadow }.as_shape(r, radius));
@@ -945,7 +945,7 @@ fn app_card(ui: &mut egui::Ui, r: Rect, kind: AppKind, pal: &Palette, row: bool)
 /// The home screen's main action.
 fn open_button(ui: &mut egui::Ui, width: f32, pal: &Palette) -> egui::Response {
     let (r, resp) = ui.allocate_exact_size(vec2(width, 52.0), Sense::click());
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Open a file"));
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, "Open a file"));
     let fill = if resp.is_pointer_button_down_on() { lerp(pal.accent, Color32::BLACK, 0.18) } else { pal.accent };
     let p = ui.painter();
     p.add(egui::Shadow { offset: [0, 3], blur: 12, spread: 0, color: pal.accent.gamma_multiply(0.35) }.as_shape(r, CornerRadius::same(14)));
@@ -967,7 +967,7 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option
         let y = full.center().y;
         let home = Rect::from_center_size(pos2(full.min.x + 28.0, y), vec2(40.0, 34.0));
         let resp = ui.interact(home, egui::Id::new("suite_home"), Sense::click());
-        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, SUITE_NAME));
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, SUITE_NAME));
         if resp.hovered() || resp.is_pointer_button_down_on() {
             ui.painter().rect_filled(home, 10.0, pal.line);
         }
@@ -984,7 +984,7 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option
             let galley = ui.painter().layout_no_wrap(kind.label().to_string(), font.clone(), ink);
             let r = Rect::from_min_size(pos2(x, y - 17.0), vec2(galley.size().x + 46.0, 34.0));
             let resp = ui.interact(r, egui::Id::new(("suite_app", kind.label())), Sense::click());
-            resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, kind.label()));
+            resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, selected, kind.label()));
             if selected {
                 ui.painter().rect_filled(r, 17.0, kind.color().gamma_multiply(if pal.dark { 0.32 } else { 0.13 }));
             } else if resp.hovered() || resp.is_pointer_button_down_on() {
@@ -1118,7 +1118,7 @@ fn writer_services(picker: &Rc<Picker>, copies: Option<PathBuf>) -> wordcraft_ui
             let (tx, rx) = std::sync::mpsc::channel::<FileDialogAnswer>();
             match &req {
                 FileDialogRequest::Open { purpose } | FileDialogRequest::OpenMany { purpose } => picker.open(purpose, Wait::Writer(tx)),
-                FileDialogRequest::Save { name } => picker.save(name, Wait::Writer(tx)),
+                FileDialogRequest::Save { name, .. } => picker.save(name, Wait::Writer(tx)),
             }
             rx
         })),

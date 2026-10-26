@@ -711,7 +711,7 @@ pub fn replace_font(apps: &mut Apps, active: AppKind, from: &str, to: &str) -> R
                 d.wb = before.0;
                 return Ok(0);
             }
-            d.undo.push(gridcraft_engine::HistoryEntry { label: "Replace Fonts".into(), wb: before.0, selection: before.1 });
+            d.undo.push(gridcraft_engine::HistoryEntry { label: "Replace Fonts".into(), wb: before.0, selection: before.1, retained_bytes: 0 });
             d.redo.clear();
             d.revision += 1;
             Ok(n)

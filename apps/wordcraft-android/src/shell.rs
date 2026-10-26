@@ -37,10 +37,10 @@ impl Shell {
 
     /// Rewrite a frame's input for touch. Returns how many seconds until the next frame is needed
     /// to see a long press, if one is.
-    pub fn raw_input(&mut self, raw: &mut egui::RawInput) -> Option<f64> {
+    pub fn raw_input(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) -> Option<f64> {
         back_is_escape(raw);
         let wait = self.touch.process(raw);
-        self.word.raw_input_hook(raw);
+        self.word.raw_input_hook(ctx, raw);
         wait
     }
 

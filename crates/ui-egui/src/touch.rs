@@ -196,7 +196,7 @@ impl TouchGestures {
 /// A touchpad-style scroll by `delta` points (positive = content moves down/right, as under a
 /// finger moving down/right).
 fn wheel(delta: Vec2, phase: TouchPhase) -> Event {
-    Event::MouseWheel { unit: MouseWheelUnit::Point, delta, phase, modifiers: Modifiers::NONE }
+    Event::MouseWheel { unit: MouseWheelUnit::Point, delta, phase, modifiers: Modifiers::NONE, source: egui::MouseWheelSource::Trackpad }
 }
 
 #[cfg(test)]

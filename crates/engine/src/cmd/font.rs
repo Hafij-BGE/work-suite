@@ -46,7 +46,7 @@ pub fn missing_fonts_notice(s: &mut Session) -> Option<String> {
 }
 
 fn load_system(s: &mut Session, _v: &Value) -> CmdResult {
-    s.ui_requests.push(json!({"open": "loadSystemFonts"}));
+    s.push_ui_request(json!({"open": "loadSystemFonts"}));
     Ok(json!({"pending": true}))
 }
 
@@ -85,6 +85,7 @@ fn import_filter(s: &mut Session, v: &Value, windows: bool) -> Option<Vec<String
 fn add_from_dirs(s: &mut Session, dirs: &[std::path::PathBuf], only: Option<Vec<String>>) -> CmdResult {
     /// At most this many failures are listed.
     const MAX_ERRORS: usize = 20;
+    check_font_store(FontDb::global().user_font_dir().as_deref())?;
     let (mut added, mut skipped, mut errors) = (Vec::<String>::new(), 0usize, Vec::<String>::new());
     for path in wordcraft_fonts::font_files_under(dirs) {
         if let Some(only) = &only {
@@ -137,6 +138,15 @@ fn add_from_dirs(s: &mut Session, dirs: &[std::path::PathBuf], only: Option<Vec<
         "errors": errors,
         "searched": dirs.iter().map(|d| d.to_string_lossy().to_string()).collect::<Vec<_>>(),
     }))
+}
+
+/// Adding or removing a font writes to the user font folder: automation confined to a write root
+/// (#769) may do that only when the folder is inside it.
+fn check_font_store(dir: Option<&std::path::Path>) -> Result<(), CmdError> {
+    match dir {
+        Some(dir) => crate::file_access::check_write(&dir.to_string_lossy()).map_err(CmdError::Failed),
+        None => Ok(()),
+    }
 }
 
 fn add(s: &mut Session, v: &Value) -> CmdResult {
@@ -193,9 +203,10 @@ fn add(s: &mut Session, v: &Value) -> CmdResult {
         }
     } else {
         // From the ribbon: the UI shows a file picker and runs this again with the file.
-        s.ui_requests.push(json!({"open": "addFont"}));
+        s.push_ui_request(json!({"open": "addFont"}));
         return Ok(json!({"pending": true}));
     };
+    check_font_store(FontDb::global().user_font_dir().as_deref())?;
     let r = FontDb::global().install_font(&name, &bytes).map_err(|e| CmdError::Failed(e.to_string()))?;
     // Text already set in the family (shown in a fallback until now) takes the new font.
     s.relayout();
@@ -225,8 +236,33 @@ fn list(_: &mut Session, v: &Value) -> CmdResult {
 
 fn remove(s: &mut Session, v: &Value) -> CmdResult {
     let family = p::str(v, "family").filter(|f| !f.trim().is_empty()).ok_or_else(|| CmdError::Params("family is required".into()))?;
+    check_font_store(FontDb::global().user_font_dir().as_deref())?;
     let gone = FontDb::global().remove_user_font(family.trim()).map_err(|e| CmdError::Failed(e.to_string()))?;
     s.relayout();
     s.status = format!("Removed {}", family.trim());
     Ok(json!({"removed": gone.iter().map(font_json).collect::<Vec<_>>()}))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn confined_automation_changes_only_a_font_store_inside_its_write_root() {
+        let root = std::env::temp_dir().join(format!("wordcraft-font-store-{}", std::process::id()));
+        let outside = std::env::temp_dir().join(format!("wordcraft-font-store-out-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        let write = crate::file_access::AutomationRoots::new(None, Some(&root)).unwrap();
+        let read_only = crate::file_access::AutomationRoots::new(Some(&root), None).unwrap();
+        crate::file_access::confine(write.as_ref(), || {
+            assert!(check_font_store(None).is_ok(), "no folder: the font lasts for the session");
+            assert!(check_font_store(Some(&root.join("fonts"))).is_ok());
+            assert!(check_font_store(Some(&outside)).is_err());
+        });
+        crate::file_access::confine(read_only.as_ref(), || assert!(check_font_store(Some(&root)).is_err()));
+        assert!(check_font_store(Some(&outside)).is_ok(), "unconfined: the person at the keyboard");
+        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&outside);
+    }
 }
