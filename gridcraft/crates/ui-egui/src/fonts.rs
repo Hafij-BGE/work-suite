@@ -468,7 +468,14 @@ pub fn install_fonts_from(dirs: &[PathBuf], only: Option<&[String]>, dest: Optio
                 report.added.push(family.clone());
             }
             // Leaked: installed fonts are few and live as long as the app.
-            added.push(Box::leak(Box::new(Face { family, names, path: target.clone(), index, weight: style_weight(&style), italic: style_italic(&style) })));
+            added.push(Box::leak(Box::new(Face {
+                family,
+                names,
+                path: target.clone(),
+                index,
+                weight: style_weight(&style),
+                italic: style_italic(&style),
+            })));
         }
     }
     report
