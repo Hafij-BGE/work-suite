@@ -1387,7 +1387,8 @@ fn account(app: &mut SlideApp, ui: &mut Ui) {
             if task(ui, Icon::Help, "About WorkSuite Slides", "About WorkSuite Slides", "The version, and who made it.", true) {
                 let _ = app.run("app.about", json!({}));
             }
-            dim(ui, "Part of WorkSuite, made by Md Hafijur Rahman.");
+            dim(ui, "Developed by Md. Hafijur Rahman. Part of WorkSuite.");
+            dim(ui, "Based on DeckCraft by the ArtCraft Team. This app was generated with AI. Developer support may not be available.");
             ui.hyperlink_to("Source code: github.com/Hafij-BGE/work-suite", "https://github.com/Hafij-BGE/work-suite");
         });
     });

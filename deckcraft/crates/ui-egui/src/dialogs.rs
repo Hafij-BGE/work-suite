@@ -2624,16 +2624,18 @@ pub fn about(_app: &mut SlideApp, ui: &mut Ui) {
         ui.label(egui::RichText::new(crate::APP_NAME).font(theme::bold(22.0)));
         ui.label(egui::RichText::new(version_line()).color(t.text_dim));
         ui.add_space(6.0);
-        ui.label("Part of WorkSuite, made by Md Hafijur Rahman.");
+        ui.label("Developed by Md. Hafijur Rahman. Part of WorkSuite.");
         ui.add_space(6.0);
         ui.hyperlink_to("Source code: github.com/Hafij-BGE/work-suite", "https://github.com/Hafij-BGE/work-suite");
         ui.add_space(6.0);
         // The licence asks that its copyright notice go with every copy.
         ui.label(
-            egui::RichText::new("Free and open source (MIT OR Apache-2.0) · © 2026 ArtCraft Team and the DeckCraft contributors")
+            egui::RichText::new("Free and open source (MIT OR Apache-2.0). Based on DeckCraft by the ArtCraft Team (https://github.com/storytold/deckcraft). © 2026 ArtCraft Team and the DeckCraft contributors. See NOTICE and THIRD_PARTY_NOTICES.md.")
                 .size(11.0)
                 .color(t.text_faint),
         );
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("This app was generated with AI. Developer support may not be available.").size(11.0).color(t.text_faint));
     });
 }
 

@@ -3,6 +3,12 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.7: About
+
+- About in Writer, Slides and Sheets now names the developer (Md. Hafijur Rahman), links the
+  source, states the licence and credits the ArtCraft team's WordCraft, DeckCraft and GridCraft,
+  which WorkSuite is built from. The licence and third-party notices are updated.
+
 ## New in 0.9.6: import a .zip of fonts, and no font notice for Symbol and Wingdings
 
 - Documents with bullets or ticks in Word's symbol fonts (Symbol, Wingdings, Wingdings 2 and 3,

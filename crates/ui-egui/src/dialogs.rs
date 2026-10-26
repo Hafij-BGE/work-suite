@@ -2680,11 +2680,13 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
                 });
             });
             ui.add_space(6.0);
-            ui.label(tl!("Part of WorkSuite, made by Md Hafijur Rahman."));
+            ui.label(tl!("Developed by Md. Hafijur Rahman. Part of WorkSuite."));
             ui.hyperlink_to(tl!("Source code: github.com/Hafij-BGE/work-suite"), "https://github.com/Hafij-BGE/work-suite");
             ui.add_space(6.0);
             // The licence asks that its copyright notice go with every copy.
-            ui.label(egui::RichText::new(tl!("MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.")).small().weak());
+            ui.label(egui::RichText::new(tl!("MIT OR Apache-2.0. Based on WordCraft by the ArtCraft Team (https://github.com/storytold/wordcraft). Copyright (c) 2026 ArtCraft Team and the WordCraft contributors. See NOTICE and THIRD_PARTY_NOTICES.md.")).small().weak());
+            ui.add_space(4.0);
+            ui.label(egui::RichText::new(tl!("This app was generated with AI. Developer support may not be available.")).small().weak());
             let (ok, cancel) = buttons(ui, tl!("Close"));
             ok || cancel
         }

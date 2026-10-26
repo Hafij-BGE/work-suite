@@ -129,7 +129,10 @@ WorkSuite is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APAC
 It includes open-source code by other authors under the same licenses; their copyright notices
 are kept in [LICENSE-MIT](LICENSE-MIT) and [NOTICE](NOTICE) (and in the `deckcraft/` and
 `gridcraft/` folders), as those licenses require. Every bundled font, icon, image and other asset
-is listed with its author, source and license in [ATTRIBUTION.md](ATTRIBUTION.md).
+is listed with its author, source and license in [ATTRIBUTION.md](ATTRIBUTION.md); the projects
+WorkSuite is built from are credited in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+This app was generated with AI. Developer support may not be available.
 
 <sub>Microsoft, Word, PowerPoint and Excel are trademarks of the Microsoft group of companies.
 WorkSuite is an independent, open-source project, not affiliated with, sponsored by or endorsed by

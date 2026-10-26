@@ -1479,15 +1479,17 @@ fn about(ui: &mut egui::Ui, _d: &mut Dialog) {
         });
     });
     ui.add_space(6.0);
-    ui.label("Part of WorkSuite, made by Md Hafijur Rahman.");
+    ui.label("Developed by Md. Hafijur Rahman. Part of WorkSuite.");
     ui.hyperlink_to("Source code: github.com/Hafij-BGE/work-suite", "https://github.com/Hafij-BGE/work-suite");
     ui.add_space(6.0);
     // The licence asks that its copyright notice go with every copy.
     ui.label(
-        egui::RichText::new("Free and open source (MIT OR Apache-2.0). Copyright (c) 2026 ArtCraft Team and the GridCraft contributors.")
+        egui::RichText::new("Free and open source (MIT OR Apache-2.0). Based on GridCraft by the ArtCraft Team (https://github.com/storytold/gridcraft). Copyright (c) 2026 ArtCraft Team and the GridCraft contributors. See NOTICE and THIRD_PARTY_NOTICES.md.")
             .small()
             .weak(),
     );
+    ui.add_space(4.0);
+    ui.label(egui::RichText::new("This app was generated with AI. Developer support may not be available.").small().weak());
 }
 
 /// WorkSuite's mark, as on its launcher icon: three app cards fanned out on slate (Sheets green,
