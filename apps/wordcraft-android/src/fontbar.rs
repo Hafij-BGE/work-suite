@@ -221,7 +221,7 @@ pub fn show(bar: &mut FontBar, apps: &mut Apps, active: AppKind, ui: &mut Ui) ->
     }
     ui.ctx().request_repaint_after(Duration::from_secs(2));
     let c = colors(ui.visuals().dark_mode);
-    let id = egui::Id::new("worksuite_fontbar");
+    let id = egui::Id::unique("worksuite_fontbar");
 
     // After an install that left nothing missing: a short "installed" line instead.
     if bar.missing.is_empty() || bar.closed.contains(&bar.key) {
@@ -316,7 +316,7 @@ fn card(bar: &mut FontBar, apps: &mut Apps, active: AppKind, ui: &mut Ui, c: &Co
     let mut action: Option<Action> = None;
     let mut close = false;
     let width = (ui.ctx().content_rect().width() - 24.0).clamp(240.0, 440.0);
-    let card_id = egui::Id::new("worksuite_fontcard");
+    let card_id = egui::Id::unique("worksuite_fontcard");
     let modal = egui::Modal::new(card_id)
         .area(egui::Modal::default_area(card_id).fade_in(false))
         .frame(egui::Frame::NONE.fill(ui.visuals().window_fill).stroke(Stroke::new(1.0, c.border)).corner_radius(14).inner_margin(Margin::same(16)))

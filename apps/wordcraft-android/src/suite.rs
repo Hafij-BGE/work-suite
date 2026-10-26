@@ -906,7 +906,7 @@ fn offline_badge(ui: &mut egui::Ui, pal: &Palette) {
 
 /// One app on the home screen: a row on a phone (`row`), a tile on a wide screen.
 fn app_card(ui: &mut egui::Ui, r: Rect, kind: AppKind, pal: &Palette, row: bool) -> egui::Response {
-    let resp = ui.interact(r, ui.id().with(("app_card", kind.label())), Sense::click());
+    let resp = ui.interact(r, ui.scope_id().with(("app_card", kind.label())), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, kind.label()));
     let p = ui.painter();
     let radius = CornerRadius::same(18);
@@ -966,7 +966,7 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option
         ui.painter().line_segment([full.left_bottom(), full.right_bottom()], Stroke::new(1.0, pal.line));
         let y = full.center().y;
         let home = Rect::from_center_size(pos2(full.min.x + 28.0, y), vec2(40.0, 34.0));
-        let resp = ui.interact(home, egui::Id::new("suite_home"), Sense::click());
+        let resp = ui.interact(home, egui::Id::unique("suite_home"), Sense::click());
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, SUITE_NAME));
         if resp.hovered() || resp.is_pointer_button_down_on() {
             ui.painter().rect_filled(home, 10.0, pal.line);
@@ -983,7 +983,7 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option
             let ink = if selected { pal.text } else { pal.dim };
             let galley = ui.painter().layout_no_wrap(kind.label().to_string(), font.clone(), ink);
             let r = Rect::from_min_size(pos2(x, y - 17.0), vec2(galley.size().x + 46.0, 34.0));
-            let resp = ui.interact(r, egui::Id::new(("suite_app", kind.label())), Sense::click());
+            let resp = ui.interact(r, egui::Id::unique(("suite_app", kind.label())), Sense::click());
             resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, selected, kind.label()));
             if selected {
                 ui.painter().rect_filled(r, 17.0, kind.color().gamma_multiply(if pal.dark { 0.32 } else { 0.13 }));
@@ -1447,7 +1447,7 @@ mod tests {
         ctx.run_ui(raw, |ui| {
             s.logic(ui.ctx());
             s.ui(ui);
-            bar = ui.ctx().read_response(egui::Id::new("suite_home")).map_or(Rect::NOTHING, |r| r.rect);
+            bar = ui.ctx().read_response(egui::Id::unique("suite_home")).map_or(Rect::NOTHING, |r| r.rect);
         })
         .drop_without_applying_deltas();
         assert!(bar.min.y >= 24.0 && bar.max.y <= 784.0, "the bar's Home button is at {bar:?}");
@@ -1507,7 +1507,7 @@ mod tests {
         let ctx = egui::Context::default();
         let (mut s, files) = suite(true);
         let services = writer_services(&s.picker, None);
-        let rx = (services.file_dialog.as_ref().unwrap())(FileDialogRequest::Save { name: "Letter.docx".into() });
+        let rx = (services.file_dialog.as_ref().unwrap())(FileDialogRequest::Save { name: "Letter.docx".into(), dir: None });
         assert_eq!(*files.saved.borrow(), ["Letter.docx"]);
         s.picked(&ctx, Some("/data/Letter.docx".into()));
         assert_eq!(rx.try_recv().unwrap(), Ok(vec!["/data/Letter.docx".to_string()]));

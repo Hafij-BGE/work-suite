@@ -540,6 +540,7 @@ impl WordApp {
     /// windows on one document as `Name:1`, `Name:2`) with its key, the active one marked,
     /// unsaved ones with the title bar's dot. Choosing one brings it to the front
     /// ([`WordApp::show_window`]).
+    #[allow(dead_code)] // Only the View tab lists windows; the Android build has none.
     pub(crate) fn switch_windows_entries(&self) -> Vec<(u64, String, bool)> {
         self.windows
             .menu
@@ -553,6 +554,7 @@ impl WordApp {
     }
 
     /// Bring window `key` to the front and make it the active one, with its document.
+    #[allow(dead_code)] // Only the View tab lists windows; the Android build has none.
     pub(crate) fn show_window(&mut self, key: u64) {
         if self.enter_window(key) {
             self.focus_window(key);

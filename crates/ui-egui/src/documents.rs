@@ -196,6 +196,7 @@ pub(crate) fn untitled_title(english: &str) -> Option<String> {
 /// View › Window › Switch Windows: the open windows (in one window, the open documents) in the
 /// order they were opened, this one marked, unsaved ones with the title bar's dot. Choosing one
 /// brings that window to the front (in one window, shows the document).
+#[allow(dead_code)] // The View tab (Switch Windows) is not in the Android build.
 pub(crate) fn switch_windows_menu(ui: &mut egui::Ui, app: &mut WordApp) {
     let native = app.windows.native();
     let entries: Vec<(u64, String, bool)> = if native {
