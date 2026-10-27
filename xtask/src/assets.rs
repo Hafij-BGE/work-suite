@@ -21,7 +21,7 @@ pub fn is_asset(path: &str) -> bool {
     if OWN_ATTRIBUTION.iter().any(|d| path.starts_with(d)) {
         return false;
     }
-    let ext = Path::new(path).extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).unwrap_or_default();
+    let ext = Path::new(path).extension().and_then(std::ffi::OsStr::to_str).map(str::to_ascii_lowercase).unwrap_or_default();
     ASSET_DIRS.iter().any(|d| path.starts_with(d)) || ASSET_EXT.contains(&ext.as_str())
 }
 

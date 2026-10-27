@@ -1,7 +1,9 @@
-# winit 0.30.13, patched for WorkSuite (Android stylus)
+# winit 0.30.13 (ArtCraft's fork), patched for WorkSuite (Android stylus)
 
-This is winit 0.30.13 as published on crates.io (Apache-2.0, see `LICENSE`), used through
-`[patch.crates-io]` in the root `Cargo.toml`, with one change for Android:
+This is the `storytold/winit` fork at `a517b3846ee8457d84ee4975110bfda6797c44dc` (winit 0.30.13,
+Apache-2.0, see `LICENSE`; the fork's own changes are listed in `PATCHES.md`). It is what the
+ArtCraft egui fork needs (`ImeResetCompleted`, `reset_ime_with_request`). It is used through
+`[patch.crates-io]` in the root `Cargo.toml`, with one change for Android on top:
 
 - `src/platform_impl/android/stylus.rs` (new) and the motion-event handling in
   `src/platform_impl/android/mod.rs`: a pointer whose Android tool type is a stylus, its eraser
@@ -13,7 +15,5 @@ This is winit 0.30.13 as published on crates.io (Apache-2.0, see `LICENSE`), use
   (touching, hovering, eraser end, side button, pressure).
 
 Upstream winit 0.30 reports every pointer as a touch and ignores hover events. Removed from the
-published crate: `examples/data` and `docs/res` (images the library doesn't use).
-
-Nothing else differs from the published crate. To update winit, copy the new release here and
+fork's tree: `examples/data`, `docs`, `.github`. To update, copy the fork's new revision here and
 apply the same change again.
