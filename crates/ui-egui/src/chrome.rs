@@ -591,9 +591,15 @@ pub fn status_bar(app: &mut WordApp, ui: &mut Ui) {
                     let mut v = if reading { app.session.view.read_zoom } else { app.canvas.scale / crate::canvas::PX_PER_PT };
                     let slider = egui::Slider::new(&mut v, if reading { 0.75..=1.5 } else { 0.1..=5.0 }).logarithmic(!reading).show_value(false);
                     ui.spacing_mut().slider_width = 110.0;
-                    if wide && ui.add(slider).changed() {
-                        let command = if reading { "view.readTextSize" } else { "view.zoom" };
-                        let _ = app.run(command, json!({"value": (v * 100.0).round()}));
+                    if wide {
+                        let response = ui.add(slider);
+                        response.widget_info(|| {
+                            egui::WidgetInfo::labeled(egui::Role::Slider, ui.is_enabled(), if reading { tl!("Text Size") } else { tl!("Zoom") })
+                        });
+                        if response.changed() {
+                            let command = if reading { "view.readTextSize" } else { "view.zoom" };
+                            let _ = app.run(command, json!({"value": (v * 100.0).round()}));
+                        }
                     }
                     if wide && small_icon(ui, "minus", tl!("Zoom Out")) {
                         if reading {
