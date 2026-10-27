@@ -293,6 +293,5 @@ fn inline_box_that_resizes_to_fit_takes_its_texts_height() {
 }
 
 /// Filler paragraphs before the box in [`inline_box_that_resizes_to_fit_takes_its_texts_height`]:
-/// enough that a 10 cm box no longer leaves room for the page break on the first page. The test
-/// pins the bundled Source Sans 3, so the count holds whatever fonts the machine has.
-const FILLER: usize = 15;
+/// enough that a 10 cm box no longer leaves room for the page break on the first page.
+const FILLER: usize = 22;
