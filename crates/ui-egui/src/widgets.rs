@@ -879,8 +879,10 @@ fn combo_impl(
         let resp = ui.add(te);
         // The field says what it is: without a name a screen reader has only "edit" to say
         // (#3172). The arrow says whose options it opens, as the split buttons' arrow does.
+        // A tip's first line names the field; any further lines only explain it on hover.
+        let name = tip.lines().next().unwrap_or_default();
         if !tip.is_empty() {
-            resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::TextInput, ui.is_enabled(), tip));
+            resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::TextInput, ui.is_enabled(), name));
         }
         keytip_badge(ui, resp.rect, "combo", id);
         focused = resp.has_focus();
@@ -935,7 +937,7 @@ fn combo_impl(
         }
         let (ar, aresp) = ui.allocate_exact_size(vec2(16.0, resp.rect.height()), Sense::click());
         if !tip.is_empty() {
-            let arrow_name = crate::i18n::fmt(tl!("{name} options"), &[("name", tip)]);
+            let arrow_name = crate::i18n::fmt(tl!("{name} options"), &[("name", name)]);
             aresp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), &arrow_name));
         }
         // It reaches one border width under the field, so the field's right border is the only line

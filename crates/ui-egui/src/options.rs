@@ -900,7 +900,7 @@ mod tests {
     #[test]
     fn user_name_field_disables_when_protection_starts() {
         let mut h = nav_harness("en", 100);
-        let user_name = || egui_kittest::kittest::By::new().role(egui::accesskit::Role::TextInput).value("WordCraft User");
+        let user_name = || egui_kittest::kittest::By::new().role(egui::accesskit::Role::TextInput).value("WorkSuite User");
         assert!(!h.get(user_name()).accesskit_node().is_disabled());
         h.state_mut().run("review.restrict", json!({"mode": "readOnly"})).unwrap();
         h.run_steps(4);

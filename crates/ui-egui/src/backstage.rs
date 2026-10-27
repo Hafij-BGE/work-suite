@@ -148,26 +148,24 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 }
             });
         });
-    egui::CentralPanel::default()
-        .frame(egui::Frame::NONE.fill(if recovery { egui::Color32::BLACK } else { t.ribbon }).inner_margin(page_margin))
-        .show(ui, |ui| {
-            // The Print page fills the pane and scrolls its settings and its preview itself (#1156).
-            if app.ui.backstage_page == "print" {
-                export_page(app, ui);
-                return;
-            }
-            egui::ScrollArea::vertical().show(ui, |ui| match app.ui.backstage_page.as_str() {
-                "home" => home_page(app, ui),
-                "new" => new_page(app, ui),
-                "open" => open_page(app, ui),
-                "saveAs" => save_as_page(app, ui),
-                "info" => info_page(app, ui),
-                "recover" => recovery_page(app, ui),
-                "print" | "export" => export_page(app, ui),
-                "options" => crate::options::page(app, ui),
-                _ => home_page(app, ui),
-            });
+    egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.ribbon).inner_margin(page_margin)).show(ui, |ui| {
+        // The Print page fills the pane and scrolls its settings and its preview itself (#1156).
+        if app.ui.backstage_page == "print" {
+            export_page(app, ui);
+            return;
+        }
+        egui::ScrollArea::vertical().show(ui, |ui| match app.ui.backstage_page.as_str() {
+            "home" => home_page(app, ui),
+            "new" => new_page(app, ui),
+            "open" => open_page(app, ui),
+            "saveAs" => save_as_page(app, ui),
+            "info" => info_page(app, ui),
+            "recover" => recovery_page(app, ui),
+            "print" | "export" => export_page(app, ui),
+            "options" => crate::options::page(app, ui),
+            _ => home_page(app, ui),
         });
+    });
 }
 
 /// Recovery is a separate copy. Leaving this page never discards it.
@@ -240,11 +238,17 @@ fn template_tile(ui: &mut Ui, app: &mut WordApp, label: &str, template: &str) {
     // Allocated at its size up front, so a wrapping gallery row moves it to the next line when
     // it doesn't fit (a plain `vertical` child is placed before its size is known, and never wraps).
     ui.allocate_ui_with_layout(vec2(150.0, 228.0), egui::Layout::top_down(egui::Align::Min), |ui| {
-        // The label sits right under the thumbnail whatever row gap the gallery uses.
-        ui.spacing_mut().item_spacing.y = 0.0;
         // As wide as the thumbnail: a long caption wraps instead of widening the gallery's row.
         ui.set_width(150.0);
-        let (r, resp) = ui.allocate_exact_size(vec2(150.0, 194.0), Sense::click());
+        // The thumbnail and its caption are one button named by the caption, so a screen reader
+        // announces "Blank document, button" rather than unnamed text (#3176); the caption opens
+        // the template too, as in Word.
+        let caption = crate::i18n::tc("template", label);
+        let job = egui::text::LayoutJob::simple(caption.to_string(), regular(12.5), ui.visuals().text_color(), 150.0);
+        let galley = ui.painter().layout_job(job);
+        let (tile, resp) = ui.allocate_exact_size(vec2(150.0, 194.0 + galley.size().y), Sense::click());
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), caption));
+        let r = Rect::from_min_size(tile.min, vec2(150.0, 194.0));
         ui.painter().rect(
             r,
             2.0,
@@ -275,10 +279,8 @@ fn template_tile(ui: &mut Ui, app: &mut WordApp, label: &str, template: &str) {
         if let Some(h) = tex {
             ui.painter().image(h.id(), r.shrink(1.0), Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), egui::Color32::WHITE);
         }
-        // The caption opens the template too, as in Word.
-        let caption =
-            ui.add(egui::Label::new(egui::RichText::new(crate::i18n::tc("template", label)).font(regular(12.5))).wrap().sense(Sense::click()));
-        if resp.clicked() || caption.clicked() {
+        ui.painter().galley(pos2(r.min.x, r.max.y), galley, ui.visuals().text_color());
+        if resp.clicked() {
             let _ = app.run("file.new", json!({"template": template}));
             app.ui.backstage = false;
             app.canvas.want_focus = true;
@@ -533,28 +535,32 @@ fn open_list(app: &mut WordApp, ui: &mut Ui) {
     if app.ui.recent.is_empty() {
         ui.label(egui::RichText::new(tl!("Documents you open will show up here.")).color(t.text_dim));
     }
-    for p in app.ui.recent.iter().take(app.ui.recent_shown()).cloned().collect::<Vec<_>>() {
-        let name = std::path::Path::new(&p).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or(p.clone());
+    let shown = app.ui.recent.iter().take(app.ui.recent_shown()).cloned().collect::<Vec<_>>();
+    let file_name = |p: &str| std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or(p.to_string());
+    let names = shown.iter().map(|p| file_name(p)).collect::<Vec<_>>();
+    for (p, name) in shown.iter().zip(&names) {
         let location = match &app.services.location_label {
-            Some(label) => label(&p),
+            Some(label) => label(p),
             None => std::path::Path::new(&p).parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_default(),
         };
         let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width().min(700.0), 40.0), Sense::click());
-        resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &name));
+        // Two documents with the same file name are told apart by their path, as on screen.
+        let spoken = if names.iter().filter(|n| *n == name).count() > 1 { format!("{name}, {p}") } else { name.clone() };
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), &spoken));
         if resp.hovered() {
             ui.painter().rect_filled(r, 4.0, t.hover);
         }
         icons::paint(ui.painter(), Rect::from_center_size(pos2(r.min.x + 18.0, r.center().y), vec2(22.0, 22.0)), "printLayout", t.icon, t.accent);
         // One line each, cut with "…" where the row ends.
         let width = (r.width() - 46.0).max(20.0);
-        for (text, font, color, y) in [(&name, medium(13.0), t.text, 13.0), (&location, regular(11.0), t.text_dim, 29.0)] {
+        for (text, font, color, y) in [(name, medium(13.0), t.text, 13.0), (&location, regular(11.0), t.text_dim, 29.0)] {
             let mut job = egui::text::LayoutJob::simple_singleline(text.clone(), font, color);
             job.wrap = egui::text::TextWrapping::truncate_at_width(width);
             let galley = ui.painter().layout_job(job);
             ui.painter().galley(pos2(r.min.x + 40.0, r.min.y + y - galley.size().y / 2.0), galley, color);
         }
         if resp.clicked() {
-            let failed = open_recent(app, &p).err();
+            let failed = open_recent(app, p).err();
             ui.ctx().data_mut(|d| d.insert_temp(open_error_id(), failed.unwrap_or_default()));
         }
     }
@@ -1476,11 +1482,9 @@ mod tests {
             }
             let back = if mac { mac_chevron(&a) } else { egui::pos2(26.0, 32.0) };
             let mut h = a11y_harness(a);
-            if !start {
-                h.state_mut().run("ui.backstage", json!({"value": true})).unwrap();
-                h.run_steps(4);
-            }
-            h.get_by_role_and_label(egui::accesskit::Role::Button, "Options").click();
+            // The Android build has no Options entry in the File menu's side bar; open the page
+            // the way the command does.
+            h.state_mut().run("ui.backstage", json!({"value": true, "page": "options"})).unwrap();
             h.run_steps(4);
             assert_eq!(h.state().ui.backstage_page, "options", "mac {mac} start {start}");
             // Into a pane, so the Options page has a focused widget of its own.

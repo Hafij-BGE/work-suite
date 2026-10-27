@@ -1104,10 +1104,8 @@ mod tests {
         keys(&mut a, &[egui::Key::E, egui::Key::AltLeft]);
         assert_eq!(a.ui.keytips, Phase::Tabs);
         assert!(a.ui.keytip_prefix.is_empty());
-        // The ribbon comes first: W is still the View tab.
-        a.ui.keytips = Phase::Off;
-        keys(&mut a, &[egui::Key::W]);
-        assert_eq!((a.ui.tab.as_str(), a.ui.keytips), ("View", Phase::Commands));
+        // Upstream also checks that W still opens the View tab first; the Android build has no
+        // View tab.
     }
 
     /// #1697 review: with no ribbon showing (Focus, Full Screen View) no tab rects are recorded,

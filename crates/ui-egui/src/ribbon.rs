@@ -1108,9 +1108,14 @@ fn home(app: &mut WordApp, ui: &mut Ui) {
                 let recent: Vec<String> = app.ui.recent_fonts.iter().map(|f| app.previews.font_shown(f)).collect();
                 let prev = app.previews.font_preview_fn();
                 let tip = match missing_font_substitute(&font) {
-                    Some(used) => crate::i18n::fmt(
-                        tl!("{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word."),
-                        &[("font", &font), ("used", &used)],
+                    // The field is still called Font; the hover adds why its text looks different.
+                    Some(used) => format!(
+                        "{}\n{}",
+                        tl!("Font"),
+                        crate::i18n::fmt(
+                            tl!("{font} isn't installed, so its text is shown with {used}. Lines and pages may break differently from Word."),
+                            &[("font", &font), ("used", &used)],
+                        )
                     ),
                     None => tl!("Font").to_string(),
                 };
@@ -3210,7 +3215,7 @@ mod tests {
     fn the_tab_strip_buttons_have_names() {
         use egui_kittest::kittest::Queryable;
         let app = WordApp::new(Session::new(wordcraft_doc::Document::from_text("Text")), crate::Services::default());
-        let mut h = egui_kittest::Harness::builder().with_size(vec2(760.0, 700.0)).build_ui_state(
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(330.0, 700.0)).build_ui_state(
             |ui, app: &mut WordApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
@@ -3223,8 +3228,9 @@ mod tests {
         let more = h.get_by_role_and_label(egui::accesskit::Role::Button, tl!("More tabs"));
         more.click();
         h.run_steps(2);
-        // The menu lists a tab that didn't fit (View is among the last on a narrow strip).
-        assert!(h.query_by_label(tl!("View")).is_some(), "the » menu lists the tabs left out");
+        // The menu lists a tab that didn't fit. The Android build's six tabs all fit upstream's 760
+        // points, so the window is a phone's width; Layout is the last tab.
+        assert!(h.query_by_label(tl!("Layout")).is_some(), "the » menu lists the tabs left out");
     }
 
     #[test]
