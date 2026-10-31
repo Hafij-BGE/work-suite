@@ -27,7 +27,7 @@ pub fn bundled() -> &'static [&'static [u8]] {
 }
 
 static BUNDLED: &[&[u8]] = &[
-    include_bytes!("../../../assets/fonts/SourceSans3-Regular.ttf"),
+    SOURCE_SANS_REGULAR,
     include_bytes!("../../../assets/fonts/SourceSans3-Semibold.ttf"),
     include_bytes!("../../../assets/fonts/SourceSans3-Bold.ttf"),
     include_bytes!("../../../assets/fonts/SourceSans3-It.ttf"),
@@ -36,11 +36,25 @@ static BUNDLED: &[&[u8]] = &[
     include_bytes!("../../../assets/fonts/SourceSerif4-Semibold.ttf"),
     include_bytes!("../../../assets/fonts/SourceSerif4-Bold.ttf"),
     include_bytes!("../../../assets/fonts/SourceSerif4-BoldIt.ttf"),
-    include_bytes!("../../../assets/fonts/Inter-Regular.ttf"),
-    include_bytes!("../../../assets/fonts/Inter-Medium.ttf"),
-    include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf"),
-    include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf"),
+    INTER_REGULAR,
+    INTER_MEDIUM,
+    INTER_SEMIBOLD,
+    JETBRAINS_MONO_REGULAR,
 ];
+
+// The bundled faces the interface also uses (`wordcraft-ui-egui`'s theme). Statics, not consts or
+// a second `include_bytes!`: a const or another include is compiled in again by each crate that
+// uses it, which put these 1.9 MB in every binary twice.
+/// Source Sans 3 Regular, the UI sans fallback.
+pub static SOURCE_SANS_REGULAR: &[u8] = include_bytes!("../../../assets/fonts/SourceSans3-Regular.ttf");
+/// Inter Regular, the interface face.
+pub static INTER_REGULAR: &[u8] = include_bytes!("../../../assets/fonts/Inter-Regular.ttf");
+/// Inter Medium.
+pub static INTER_MEDIUM: &[u8] = include_bytes!("../../../assets/fonts/Inter-Medium.ttf");
+/// Inter SemiBold.
+pub static INTER_SEMIBOLD: &[u8] = include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf");
+/// JetBrains Mono Regular, the monospace face.
+pub static JETBRAINS_MONO_REGULAR: &[u8] = include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf");
 
 #[derive(Clone)]
 enum FontBytes {
