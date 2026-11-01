@@ -2214,6 +2214,17 @@ mod tests {
         }
         let latin = db.face(FALLBACK_FAMILY, "Regular");
         let chars: Vec<char> = THAI_RUN.chars().filter(|c| !c.is_whitespace()).collect();
+        // Debian's Noto Sans/Serif/Looped Thai have no Latin: with only those, no installed file
+        // maps the whole run and the search rightly finds none.
+        let paths: Vec<std::path::PathBuf> = db.read_catalog().iter().map(|e| e.path.clone()).collect();
+        let installed = paths.iter().any(|p| {
+            let ranges = read_fallback_file(p).as_deref().map(coverage_ranges).unwrap_or_default();
+            chars.iter().all(|c| ranges_hold(&ranges, u32::from(*c)))
+        });
+        if !installed {
+            eprintln!("skipped: no installed font maps the whole Thai run");
+            return;
+        }
         let f = db.fallback_for_run(&chars, latin.id(), false, false).expect("one face covers the run");
         assert_ne!(f.id, latin.id);
         for c in &chars {
