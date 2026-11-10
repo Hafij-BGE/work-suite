@@ -112,6 +112,12 @@ in [`packaging/android/README.md`](packaging/android/README.md). To look at the 
 a phone, `cargo run -p wordcraft-android --example suite_shot -- out.ppm home dark` renders a
 screenshot in software.
 
+Before pushing, especially after merging upstream, run `scripts/preflight.sh`. It checks
+formatting in all three workspaces, the lock files, the Slides and Sheets workspace members
+Dependabot needs, clippy and builds: the failures CI has hit after past merges. `--fix` formats
+the code, `--quick` skips clippy and builds, and `--install-hook` runs `--quick` on every
+`git push`. The script's header explains each check.
+
 | Where | What |
 |---|---|
 | [`apps/wordcraft-android`](apps/wordcraft-android) | The Android app: the home screen and app switcher (`suite.rs`), touch, Back, insets and the stylus's eraser end |
