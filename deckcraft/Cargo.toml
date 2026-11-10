@@ -86,7 +86,7 @@ chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 # text / rendering / formats
 skrifa = "0.47"
-harfrust = "0.13"
+harfrust = "0.15"
 vello_cpu = "0.2"
 vello_common = { version = "0.2", default-features = false }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "tiff", "bmp"] }
