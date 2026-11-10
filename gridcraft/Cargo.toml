@@ -1,6 +1,26 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/*", "xtask"]
+# Listed one by one, not as crates/* and apps/*: Dependabot expands a nested workspace's
+# globs against the repository root's crates/ and apps/, then fails on paths that don't exist.
+members = [
+    "crates/calc",
+    "crates/chart",
+    "crates/core",
+    "crates/engine",
+    "crates/formula",
+    "crates/functions",
+    "crates/math",
+    "crates/mcp",
+    "crates/model",
+    "crates/numfmt",
+    "crates/pdf",
+    "crates/ui-egui",
+    "crates/xlsx",
+    "apps/gridcraft-cli",
+    "apps/gridcraft-web",
+    "apps/gridcraft",
+    "xtask",
+]
 default-members = ["crates/*", "apps/gridcraft", "apps/gridcraft-cli", "xtask"]
 
 [workspace.package]
