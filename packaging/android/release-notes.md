@@ -3,6 +3,12 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.10: updated Writer, Slides and Sheets
+
+- Writer, Slides and Sheets now include the latest changes from the ArtCraft team's WordCraft,
+  DeckCraft and GridCraft (layout, Word, PowerPoint and Excel compatibility fixes, and speed).
+  WorkSuite's phone ribbon, home screen, stylus support, About and font bar are kept.
+
 ## New in 0.9.9: a smaller app
 
 - WorkSuite is about 2 MB smaller: the interface fonts (Inter, Source Sans 3 and JetBrains Mono)
