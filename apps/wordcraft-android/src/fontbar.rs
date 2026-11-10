@@ -496,10 +496,10 @@ fn missing_fonts(apps: &mut Apps, active: AppKind) -> Option<(String, Vec<Missin
             let key = format!("writer:{}:{}", s.document_id(), s.path.as_ref().map(|p| p.to_string_lossy().to_string()).unwrap_or_default());
             // A new document is in Writer's own default fonts (Word's Aptos): nothing to tell.
             let new = s.path.is_none();
-            let list = wordcraft_engine::cmd::font::missing_fonts(s)
+            let list = wordcraft_engine::cmd::font::session_missing_fonts(s)
                 .into_iter()
-                .filter(|m| !(new && ["Aptos", "Aptos Display"].iter().any(|d| m.requested.eq_ignore_ascii_case(d))))
-                .map(|m| Missing { name: m.requested, shown_with: Some(m.shown_with) })
+                .filter(|m| !(new && ["Aptos", "Aptos Display"].iter().any(|d| m.font.eq_ignore_ascii_case(d))))
+                .map(|m| Missing { name: m.font, shown_with: m.shown_as.into_iter().next() })
                 .collect();
             Some((key, list))
         }
