@@ -38,7 +38,12 @@ pub fn session_missing_fonts(s: &mut Session) -> Vec<MissingFont> {
 /// [`session_missing_fonts`] as JSON, as `font.missing` lists them:
 /// `[{"font": "Aptos", "shownAs": ["Arial"], "metricCompatible": false}]`.
 pub fn missing_fonts_json(s: &mut Session) -> Value {
-    json!(session_missing_fonts(s).iter().map(|m| json!({"font": m.font, "shownAs": m.shown_as, "metricCompatible": m.metric_compatible})).collect::<Vec<_>>())
+    json!(
+        session_missing_fonts(s)
+            .iter()
+            .map(|m| json!({"font": m.font, "shownAs": m.shown_as, "metricCompatible": m.metric_compatible}))
+            .collect::<Vec<_>>()
+    )
 }
 
 /// One line naming the document's fonts that aren't installed and whose substitutes measure

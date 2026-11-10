@@ -42,7 +42,8 @@ impl SheetApp {
         self.fonts_noted.insert(uid);
         let Some(text) = crate::missing_fonts_text(&missing) else { return };
         #[cfg(not(target_arch = "wasm32"))]
-        let action = (!fonts::windows_font_dirs().is_empty()).then(|| ("Install from Windows on this PC".to_string(), crate::INSTALL_FONTS.to_string()));
+        let action =
+            (!fonts::windows_font_dirs().is_empty()).then(|| ("Install from Windows on this PC".to_string(), crate::INSTALL_FONTS.to_string()));
         #[cfg(target_arch = "wasm32")]
         let action = None;
         self.notice = Some(Notice { text, kind: NoticeKind::Info, action });
