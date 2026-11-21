@@ -398,6 +398,21 @@ fn card(bar: &mut FontBar, apps: &mut Apps, active: AppKind, ui: &mut Ui, c: &Co
                         }
                     });
                 }
+                if !microsoft && fontget::microsoft_not_free(&name) {
+                    ui.add_space(6.0);
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(format!(
+                                "Microsoft has no free download of “{name}”: it comes with Windows and Office. Import your own copy \
+                                 (from C:\\Windows\\Fonts on a Windows PC) with Import fonts…, or use the free stand-in. \
+                                 Fonts you add are kept for Writer, Slides and Sheets."
+                            ))
+                            .size(12.5)
+                            .weak(),
+                        )
+                        .wrap(),
+                    );
+                }
                 if microsoft {
                     ui.add_space(6.0);
                     ui.horizontal_wrapped(|ui| {

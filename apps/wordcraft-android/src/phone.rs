@@ -126,13 +126,13 @@ impl PhoneUi {
             let size = vec2(44.0, 40.0);
             // Back (to the home screen).
             let back = Rect::from_center_size(pos2(full.min.x + 26.0, y), size);
-            if icon_button(ui, back, "phone_back", "Back to WorkSuite home", true, &ink, |p, r, c| paint_back(p, r, c)) {
+            if icon_button(ui, back, "phone_back", "Back to WorkSuite home", true, &ink, paint_back) {
                 act = Some(Act::Home);
             }
             // Right side: menu, redo, undo.
             let menu = Rect::from_center_size(pos2(full.max.x - 26.0, y), size);
             menu_button = menu;
-            if icon_button(ui, menu, "phone_menu", "More", true, &ink, |p, r, c| paint_menu(p, r, c)) {
+            if icon_button(ui, menu, "phone_menu", "More", true, &ink, paint_menu) {
                 self.menu = !self.menu;
             }
             let redo = menu.translate(vec2(-44.0, 0.0));

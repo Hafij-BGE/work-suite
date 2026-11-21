@@ -13,6 +13,10 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
   Find and Keyboard. Ribbon shows the full ribbon when you need more. In Read Mode it offers Edit.
 - On a tablet the layout stays as it was, with a new Hide ribbon / Show ribbon button.
 - The app starts faster: fonts load in the background while the home screen shows.
+- Fonts you add or download are kept for Slides and Sheets too: they no longer ask for the same
+  font again after the app restarts.
+- For Microsoft fonts that have no free download (Calibri, Cambria, Segoe UI…), the font card
+  now says so, and points to importing your own copy or using the free stand-in.
 
 ## New in 0.9.10: updated Writer, Slides and Sheets
 

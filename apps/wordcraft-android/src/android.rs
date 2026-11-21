@@ -187,6 +187,16 @@ impl Folders {
                 }
             }
         }
+        // Fonts added in any app (or from the font bar) are kept in `settings/fonts`, which
+        // Writer loads at start. Slides and Sheets read it too as an extra font folder: without
+        // it they forgot those fonts on every start, and the font bar asked for them again.
+        if let Some(fonts) = self.settings.as_ref().map(|d| d.join("fonts")) {
+            // SAFETY: as above.
+            #[allow(unsafe_code)]
+            unsafe {
+                std::env::set_var("CRAFT_EXTRA_FONT_DIRS", fonts);
+            }
+        }
     }
 }
 
