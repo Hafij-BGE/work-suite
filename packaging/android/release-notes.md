@@ -3,6 +3,17 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.11: a phone layout
+
+- On a phone (portrait or landscape) the top bar is slim: Back, the document's name, Undo, Redo
+  and a menu (File, Save, Find, Advanced ribbon, and the other apps). The bar of apps and the
+  title row are gone, so the page gets more room.
+- A floating tool bar at the bottom has what most edits need: Format (bold, italic, underline,
+  strikethrough, text size, colour, highlight), Paragraph (alignment, lists, indent), Picture,
+  Find and Keyboard. Ribbon shows the full ribbon when you need more. In Read Mode it offers Edit.
+- On a tablet the layout stays as it was, with a new Hide ribbon / Show ribbon button.
+- The app starts faster: fonts load in the background while the home screen shows.
+
 ## New in 0.9.10: updated Writer, Slides and Sheets
 
 - Writer, Slides and Sheets now include the latest changes from the ArtCraft team's WordCraft,
