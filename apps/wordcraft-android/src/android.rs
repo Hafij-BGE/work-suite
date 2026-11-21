@@ -50,6 +50,7 @@ fn android_main(app: AndroidApp) {
                     writer_prefs: folders.settings.as_ref().map(|d| d.join("ui.json")),
                     recovery: folders.settings.as_ref().map(|d| d.join("recovery")),
                     copies: folders.copies.clone(),
+                    resume: folders.settings.as_ref().map(|d| d.join("resume.json")),
                 },
             );
             Ok(Box::new(App { suite, android: app, saf, synced_at: 0.0, light_bars: None }))

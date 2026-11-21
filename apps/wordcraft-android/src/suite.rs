@@ -192,6 +192,9 @@ pub struct SuitePaths {
     pub recovery: Option<PathBuf>,
     /// Where Android's file picker puts the editors' copies of picked documents (see `saf.rs`).
     pub copies: Option<PathBuf>,
+    /// Which app and document were showing (`resume.json`): Android may end the process while
+    /// the suite is in the background, and the next start opens them again.
+    pub resume: Option<PathBuf>,
 }
 
 /// The suite: its home screen and the three apps.
@@ -231,6 +234,10 @@ pub struct Suite {
     pub phone: crate::phone::PhoneUi,
     /// The phone tool bar's Keyboard was tapped: the host brings the soft keyboard up.
     want_keyboard: bool,
+    /// The document of the last run is open again (or there was none): from then on what shows
+    /// is written to `paths.resume` when it changes.
+    resumed: bool,
+    resume_written: Option<String>,
 }
 
 /// The process-wide font database is built (bundled fonts, then the user's own) on a thread of
@@ -288,6 +295,8 @@ impl Suite {
             fontbar: crate::fontbar::FontBar::new(fontbar_off),
             phone: crate::phone::PhoneUi::default(),
             want_keyboard: false,
+            resumed: false,
+            resume_written: None,
         }
     }
 
@@ -439,15 +448,13 @@ impl Suite {
             AppKind::Writer => {
                 if let Some(w) = &mut self.writer {
                     match w.word.run("file.open", json!({ "path": path })) {
-                        // The document shows at once, not the start screen it opened over, in Read Mode:
-                        // reading first, as on a phone; Edit Document (or the View tab) edits it.
+                        // The document shows at once, not the start screen it opened over, ready to
+                        // edit; the keyboard waits for a tap on the page (the phone tool bar's Read
+                        // keeps typing out while reading).
                         Ok(_) => {
                             w.word.ui.backstage = false;
                             self.writer_fresh = false;
-                            if let Err(e) = w.word.run("view.readMode", json!({})) {
-                                log::warn!("Read Mode: {e}");
-                                w.word.canvas.want_focus = true;
-                            }
+                            self.phone.reading = false;
                         }
                         Err(e) => log::warn!("{path}: {e}"),
                     }
@@ -466,6 +473,49 @@ impl Suite {
                     s.open_path(path);
                 }
             }
+        }
+    }
+
+    /// What shows now, for `resume.json`: the active app and its document's file.
+    fn resume_state(&self) -> String {
+        let (app, path) = match self.active {
+            None => ("home", None),
+            Some(AppKind::Writer) => {
+                ("writer", self.writer.as_ref().and_then(|w| w.word.session.path.as_ref()).map(|p| p.to_string_lossy().into_owned()))
+            }
+            Some(AppKind::Slides) => ("slides", self.slides.as_ref().and_then(|s| s.session.doc().ok()).and_then(|d| d.path.clone())),
+            Some(AppKind::Sheets) => ("sheets", self.sheets.as_ref().and_then(|s| s.session.doc().ok()).and_then(|d| d.path.clone())),
+        };
+        json!({ "app": app, "path": path }).to_string()
+    }
+
+    /// The first frame opens what showed when the last run ended; later frames record what
+    /// shows whenever it changes.
+    fn keep_resume(&mut self, ctx: &egui::Context) {
+        let Some(file) = self.paths.resume.clone() else { return };
+        if !std::mem::replace(&mut self.resumed, true) {
+            let last: serde_json::Value = std::fs::read_to_string(&file).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+            let path = last["path"].as_str().filter(|p| Path::new(p).is_file());
+            let app = match last["app"].as_str() {
+                Some("writer") => Some(AppKind::Writer),
+                Some("slides") => Some(AppKind::Slides),
+                Some("sheets") => Some(AppKind::Sheets),
+                _ => None,
+            };
+            match (app, path) {
+                (Some(kind), Some(path)) if AppKind::for_path(path) == kind => self.open_in_app(ctx, path),
+                (Some(kind), _) => self.switch(ctx, Some(kind)),
+                (None, _) => {}
+            }
+            self.resume_written = Some(self.resume_state());
+            return;
+        }
+        let now = self.resume_state();
+        if self.resume_written.as_deref() != Some(now.as_str()) {
+            if let Err(e) = std::fs::write(&file, &now) {
+                log::warn!("{}: {e}", file.display());
+            }
+            self.resume_written = Some(now);
         }
     }
 
@@ -564,6 +614,9 @@ impl Suite {
         if self.active == Some(AppKind::Writer)
             && let Some(w) = &mut self.writer
         {
+            if self.phone.reading {
+                keep_typing_out(raw);
+            }
             return w.raw_input(ctx, raw);
         }
         let wait = self.touch.process(raw);
@@ -647,13 +700,15 @@ impl Suite {
     /// The frame's logic. Returns whether the soft keyboard should come up now (a tap put Writer's
     /// caret on the page).
     pub fn logic(&mut self, ctx: &egui::Context) -> bool {
+        self.keep_resume(ctx);
         if self.writer_fresh && self.writer.as_ref().is_some_and(|w| !w.word.ui.backstage) {
             self.writer_fresh = false;
         }
         match self.active {
             Some(AppKind::Writer) => {
                 let tapped = self.writer.as_mut().is_some_and(|w| w.logic(ctx));
-                std::mem::take(&mut self.want_keyboard) || tapped
+                // Reading: a tap on the page selects or follows a link, but brings no keyboard.
+                std::mem::take(&mut self.want_keyboard) || (tapped && !self.phone.reading)
             }
             Some(AppKind::Slides) => {
                 if let Some(s) = &mut self.slides {
@@ -802,7 +857,7 @@ impl Suite {
                         info.title = word.title_stem();
                         info.can_undo = word.session.can_undo();
                         info.can_redo = word.session.can_redo();
-                        info.read_mode = word.session.view.read_mode;
+                        info.read_mode = self.phone.reading;
                     }
                 }
             }
@@ -846,7 +901,19 @@ impl Suite {
                 AppKind::Sheets => run(self, "ui.backstage", json!({"page": "home"})),
             },
             Act::Edit => {
-                run(self, "view.readMode", json!({}));
+                self.phone.reading = false;
+                if let Some(w) = &mut self.writer {
+                    let _ = w.word.run("view.printLayout", json!({}));
+                }
+                self.want_keyboard = false;
+            }
+            Act::Read => {
+                self.phone.reading = true;
+                self.phone.sheet = None;
+                if let Some(w) = &mut self.writer {
+                    let _ = w.word.run("view.webLayout", json!({}));
+                    w.word.canvas.want_focus = false;
+                }
                 self.want_keyboard = false;
             }
             Act::Keyboard => {
@@ -1054,6 +1121,20 @@ impl Suite {
 }
 
 /// Removes Android's Back (the browser's Back key) from a frame's input; whether it was pressed.
+/// Reading on a phone: what would change the document (typed text, pasting, cutting, deleting,
+/// Enter) is dropped; moving around, selecting and copying still work.
+fn keep_typing_out(raw: &mut egui::RawInput) {
+    use egui::{Event, Key};
+    raw.events.retain(|e| match e {
+        Event::Text(_) | Event::Paste(_) | Event::Cut | Event::Ime(_) => false,
+        Event::Key { key, modifiers, .. } => {
+            !matches!(key, Key::Backspace | Key::Delete | Key::Enter | Key::Tab)
+                && !(modifiers.command && matches!(key, Key::Z | Key::Y | Key::V | Key::X))
+        }
+        _ => true,
+    });
+}
+
 fn take_back(raw: &mut egui::RawInput) -> bool {
     let mut pressed = false;
     raw.events.retain(|e| match e {
@@ -1495,7 +1576,36 @@ mod tests {
     }
 
     #[test]
-    fn opened_documents_start_in_read_mode_and_typing_leaves_them_alone() {
+    fn the_document_showing_opens_again_after_the_process_ends() {
+        let ctx = egui::Context::default();
+        let dir = temp("resume");
+        let paths = SuitePaths { resume: Some(dir.join("resume.json")), ..Default::default() };
+        let txt = dir.join("kept.txt");
+        std::fs::write(&txt, "Still here").unwrap();
+        {
+            let mut s = Suite::new(Picker::new(None), paths.clone());
+            frames(&ctx, &mut s, 1);
+            s.open_in_app(&ctx, &txt.to_string_lossy());
+            frames(&ctx, &mut s, 2);
+        }
+        // A new process: the same document shows again, without the user opening it.
+        let ctx = egui::Context::default();
+        let mut s = Suite::new(Picker::new(None), paths.clone());
+        frames(&ctx, &mut s, 2);
+        assert_eq!(s.active, Some(AppKind::Writer));
+        let w = s.writer.as_ref().unwrap();
+        assert!(w.word.session.doc.plain_text(wordcraft_doc::StoryRef::Body).contains("Still here"));
+        // Back on the home screen when the process ends: it starts there.
+        s.switch(&ctx, None);
+        frames(&ctx, &mut s, 1);
+        let mut s = Suite::new(Picker::new(None), paths);
+        frames(&ctx, &mut s, 1);
+        assert_eq!(s.active, None);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn opened_documents_are_ready_to_edit_and_reading_keeps_typing_out() {
         let ctx = egui::Context::default();
         let dir = temp("read");
         let (mut s, _) = suite(true);
@@ -1503,7 +1613,12 @@ mod tests {
         std::fs::write(&txt, "Dear committee").unwrap();
         s.open_in_app(&ctx, &txt.to_string_lossy());
         frames(&ctx, &mut s, 3);
-        assert!(s.writer.as_ref().unwrap().word.session.view.read_mode, "an opened document shows in Read Mode");
+        let view = &s.writer.as_ref().unwrap().word.session.view;
+        assert!(!view.read_mode, "no Read Mode: the document opens for editing");
+        // The tool bar's Read: text wraps to the screen, and typing is kept out.
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::Read);
+        assert!(s.phone.reading);
+        assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Web");
         let window = Rect::from_min_size(pos2(0.0, 0.0), vec2(420.0, 860.0));
         for _ in 0..3 {
             let mut raw = egui::RawInput { screen_rect: Some(window), events: vec![egui::Event::Text("x".into())], ..Default::default() };
@@ -1514,12 +1629,13 @@ mod tests {
             })
             .drop_without_applying_deltas();
         }
-        let w = s.writer.as_mut().unwrap();
+        let w = s.writer.as_ref().unwrap();
         assert_eq!(w.word.session.doc.plain_text(wordcraft_doc::StoryRef::Body).trim(), "Dear committee", "typing doesn't change it");
         assert!(!w.word.session.dirty);
-        // Edit Document: back to Print Layout, for editing.
-        w.word.run("view.printLayout", json!({})).unwrap();
-        assert!(!w.word.session.view.read_mode);
+        // Edit: back to Print Layout, for editing.
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::Edit);
+        assert!(!s.phone.reading);
+        assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Print");
         let _ = std::fs::remove_dir_all(dir);
     }
 

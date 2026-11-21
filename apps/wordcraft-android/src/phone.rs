@@ -37,8 +37,10 @@ pub enum Act {
     Ribbon,
     /// Bring the soft keyboard up at the caret.
     Keyboard,
-    /// Leave Read Mode and edit the document.
+    /// Leave reading and edit the document.
     Edit,
+    /// Read the document: text wrapped to the screen, typing kept out.
+    Read,
     /// Show another app.
     Switch(AppKind),
     /// Run one of the app's commands.
@@ -61,6 +63,9 @@ pub struct PhoneUi {
     pub sheet: Option<Sheet>,
     /// The top bar's menu is open.
     menu: bool,
+    /// Writer's document shows for reading (the tool bar's Read): text wrapped to the screen
+    /// (Web Layout), and typing and the keyboard kept out until Edit.
+    pub reading: bool,
 }
 
 /// What the bars show about the app.
@@ -69,7 +74,7 @@ pub struct BarInfo {
     pub title: String,
     pub can_undo: bool,
     pub can_redo: bool,
-    /// Writer in Read Mode: the tool bar offers Edit instead of formatting.
+    /// Writer's document shows for reading: the tool bar offers Edit instead of formatting.
     pub read_mode: bool,
     /// Hide the tool bar (a dialog, the File view, the start screen).
     pub hide_tools: bool,
@@ -230,6 +235,7 @@ impl PhoneUi {
             items.push(("Find", Tool::Find));
             if !info.read_mode {
                 items.push(("Keyboard", Tool::Keyboard));
+                items.push(("Read", Tool::Read));
             }
         }
         items.push(("Ribbon", Tool::Ribbon));
@@ -261,11 +267,13 @@ impl PhoneUi {
                 }
                 let icon = Rect::from_center_size(pos2(cell.center().x, cell.min.y + 17.0), vec2(22.0, 22.0));
                 paint_tool(p, icon, *tool, PILL_INK);
-                p.text(pos2(cell.center().x, cell.max.y - 9.0), Align2::CENTER_CENTER, *label, FontId::proportional(11.0), PILL_INK);
+                let size = (item_w / 5.0).clamp(9.0, 11.0);
+                p.text(pos2(cell.center().x, cell.max.y - 9.0), Align2::CENTER_CENTER, *label, FontId::proportional(size), PILL_INK);
                 if resp.clicked() {
                     match tool {
                         Tool::Sheet(s) => self.sheet = if self.sheet == Some(*s) { None } else { Some(*s) },
                         Tool::Edit => act = Some(Act::Edit),
+                        Tool::Read => act = Some(Act::Read),
                         Tool::Picture => act = Some(Act::Cmd("insert.picture", serde_json::json!({}))),
                         Tool::Find => act = Some(Act::Find),
                         Tool::Keyboard => act = Some(Act::Keyboard),
@@ -293,6 +301,7 @@ impl PhoneUi {
 enum Tool {
     Sheet(Sheet),
     Edit,
+    Read,
     Picture,
     Find,
     Keyboard,
@@ -532,6 +541,20 @@ fn paint_tool(p: &egui::Painter, r: Rect, tool: Tool, c: Color32) {
             for (dx, dy) in [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)] {
                 let cell = Rect::from_min_size(pos2(r.min.x + 1.0 + dx * (q + 2.0), r.min.y + 1.0 + dy * (q + 2.0)), vec2(q, q));
                 p.rect_stroke(cell, 3.0, s, StrokeKind::Inside);
+            }
+        }
+        Tool::Read => {
+            // An open book.
+            let s = Stroke::new(1.8, c);
+            let mid = r.center_bottom() - vec2(0.0, 3.0);
+            let top = pos2(r.center().x, r.min.y + 5.0);
+            p.line_segment([top, mid], s);
+            for side in [-1.0f32, 1.0] {
+                let outer_top = pos2(r.center().x + side * (r.width() / 2.0 - 1.0), r.min.y + 3.0);
+                let outer_bot = pos2(outer_top.x, r.max.y - 5.0);
+                p.line_segment([top, outer_top], s);
+                p.line_segment([outer_top, outer_bot], s);
+                p.line_segment([outer_bot, mid], s);
             }
         }
         Tool::Edit => {
