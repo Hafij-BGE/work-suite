@@ -33,10 +33,9 @@ fn android_main(app: AndroidApp) {
     folders.export();
     // Fonts added in Writer (or installed from the font bar) are kept in `fonts` in the settings
     // folder, as on the desktop: load them, and keep fonts added later there.
-    if let Some(dir) = folders.settings.as_ref().map(|d| d.join("fonts")).filter(|d| made(d)) {
-        let (loaded, skipped) = wordcraft_fonts::FontDb::global().load_user_fonts(&dir);
-        log::info!("user fonts: {} loaded, {} skipped", loaded.len(), skipped.len());
-    }
+    // Built on a thread of its own while the home screen comes up; an app waits for it when it
+    // is first opened.
+    crate::suite::warm_fonts(folders.settings.as_ref().map(|d| d.join("fonts")).filter(|d| made(d)));
     let mut options = eframe::NativeOptions { android_app: Some(app.clone()), ..Default::default() };
     options.viewport = options.viewport.with_title(SUITE_NAME);
     let result = eframe::run_native(

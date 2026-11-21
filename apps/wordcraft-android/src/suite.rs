@@ -227,6 +227,40 @@ pub struct Suite {
     pub chrome_dark: bool,
     /// The bar over a document whose fonts aren't installed (src/fontbar.rs).
     pub fontbar: crate::fontbar::FontBar,
+    /// The phone layout's bars (src/phone.rs): used while the window is phone-sized.
+    pub phone: crate::phone::PhoneUi,
+    /// The phone tool bar's Keyboard was tapped: the host brings the soft keyboard up.
+    want_keyboard: bool,
+}
+
+/// The process-wide font database is built (bundled fonts, then the user's own) on a thread of
+/// its own while the home screen shows, instead of before the first frame.
+static FONT_WARMUP: std::sync::Mutex<Option<std::thread::JoinHandle<()>>> = std::sync::Mutex::new(None);
+
+/// Start building the font database in the background, loading the fonts in `user_fonts` too.
+pub fn warm_fonts(user_fonts: Option<PathBuf>) {
+    let handle = std::thread::Builder::new()
+        .name("font-warmup".into())
+        .spawn(move || {
+            let db = wordcraft_fonts::FontDb::global();
+            if let Some(dir) = user_fonts {
+                let (loaded, skipped) = db.load_user_fonts(&dir);
+                log::info!("user fonts: {} loaded, {} skipped", loaded.len(), skipped.len());
+            }
+        })
+        .map_err(|e| log::warn!("font warm-up thread: {e}"))
+        .ok();
+    if let Ok(mut slot) = FONT_WARMUP.lock() {
+        *slot = handle;
+    }
+}
+
+/// Wait for the background font load (an app is about to lay text out with it).
+fn fonts_ready() {
+    let handle = FONT_WARMUP.lock().ok().and_then(|mut slot| slot.take());
+    if let Some(h) = handle {
+        let _ = h.join();
+    }
 }
 
 impl Suite {
@@ -252,6 +286,8 @@ impl Suite {
             chrome: Color32::BLACK,
             chrome_dark: true,
             fontbar: crate::fontbar::FontBar::new(fontbar_off),
+            phone: crate::phone::PhoneUi::default(),
+            want_keyboard: false,
         }
     }
 
@@ -364,6 +400,7 @@ impl Suite {
     }
 
     fn ensure(&mut self, ctx: &egui::Context, kind: AppKind) {
+        fonts_ready();
         match kind {
             AppKind::Writer if self.writer.is_none() => {
                 let mut shell = Shell::new(writer_services(&self.picker, self.paths.copies.clone()), self.paths.writer_prefs.clone());
@@ -614,7 +651,10 @@ impl Suite {
             self.writer_fresh = false;
         }
         match self.active {
-            Some(AppKind::Writer) => self.writer.as_mut().is_some_and(|w| w.logic(ctx)),
+            Some(AppKind::Writer) => {
+                let tapped = self.writer.as_mut().is_some_and(|w| w.logic(ctx));
+                std::mem::take(&mut self.want_keyboard) || tapped
+            }
             Some(AppKind::Slides) => {
                 if let Some(s) = &mut self.slides {
                     s.logic(ctx);
@@ -653,10 +693,30 @@ impl Suite {
         // The bar follows the app's own light or dark look.
         let bar = Palette::bar(ui.visuals().dark_mode);
         self.paint_chrome(&ctx, bar.bg, bar.dark);
-        if let Some(go) = suite_bar(ui, active, &bar) {
-            self.switch(&ctx, go);
-            egui::CentralPanel::default().show(ui, |_| {});
-            return;
+        // A phone gets the phone layout (src/phone.rs) in place of the suite bar and the apps'
+        // own title bars and ribbons; a tablet keeps the desktop layout.
+        let phone = crate::phone::is_phone(ui.max_rect().size());
+        self.apply_chrome(active, phone);
+        if phone {
+            let info = self.bar_info(active);
+            if let Some(act) = self.phone.top_bar(ui, &info) {
+                self.act(&ctx, active, act);
+                if self.active != Some(active) {
+                    egui::CentralPanel::default().show(ui, |_| {});
+                    return;
+                }
+                self.apply_chrome(active, phone);
+            }
+        } else {
+            match suite_bar(ui, active, &bar, self.ribbon_collapsed(active)) {
+                Some(BarAction::Go(go)) => {
+                    self.switch(&ctx, go);
+                    egui::CentralPanel::default().show(ui, |_| {});
+                    return;
+                }
+                Some(BarAction::ToggleRibbon) => self.toggle_ribbon(active),
+                None => {}
+            }
         }
         if std::mem::take(&mut self.settling) {
             // The app's fonts become active next frame.
@@ -685,6 +745,166 @@ impl Suite {
                     s.ui(ui);
                 }
             }
+        }
+        if phone && self.active == Some(active) {
+            let mut info = self.bar_info(active);
+            if active == AppKind::Writer && self.phone.sheet == Some(crate::phone::Sheet::Format) {
+                info.marks = self.writer_marks();
+            }
+            if let Some(act) = self.phone.tool_bar(&ctx, &info) {
+                self.act(&ctx, active, act);
+            }
+        }
+    }
+
+    /// Which of the active app's own bars show: on a phone the suite draws its own instead of
+    /// the title bar, and the ribbon only when asked for (Advanced ribbon).
+    fn apply_chrome(&mut self, active: AppKind, phone: bool) {
+        let ribbon = !phone || self.phone.advanced;
+        match active {
+            AppKind::Writer => {
+                if let Some(w) = &mut self.writer {
+                    w.word.host_chrome = wordcraft_ui_egui::HostChrome { title_bar: !phone, ribbon };
+                }
+            }
+            AppKind::Slides => {
+                if let Some(s) = &mut self.slides {
+                    s.host_title_bar = !phone;
+                    s.host_ribbon = ribbon;
+                }
+            }
+            AppKind::Sheets => {
+                if let Some(s) = &mut self.sheets {
+                    s.chrome.title_bar = !phone;
+                    s.chrome.ribbon = ribbon;
+                }
+            }
+        }
+    }
+
+    /// What the phone bars show about the active app.
+    fn bar_info(&self, active: AppKind) -> crate::phone::BarInfo {
+        let mut info = crate::phone::BarInfo {
+            kind: active,
+            title: active.label().to_string(),
+            can_undo: true,
+            can_redo: true,
+            read_mode: false,
+            hide_tools: false,
+            marks: [false; 4],
+        };
+        match active {
+            AppKind::Writer => {
+                if let Some(w) = &self.writer {
+                    let word = &w.word;
+                    info.hide_tools = word.ui.backstage || word.dialog.is_some() || !word.has_document();
+                    if !word.ui.backstage && word.has_document() {
+                        info.title = word.title_stem();
+                        info.can_undo = word.session.can_undo();
+                        info.can_redo = word.session.can_redo();
+                        info.read_mode = word.session.view.read_mode;
+                    }
+                }
+            }
+            AppKind::Slides => {
+                if let Some(s) = &self.slides {
+                    info.hide_tools = s.backstage.is_some() || s.dialog.is_some() || s.show.is_some() || s.session.active().is_none();
+                }
+            }
+            AppKind::Sheets => {
+                if let Some(s) = &self.sheets {
+                    info.hide_tools = s.backstage.is_some() || s.dialog.is_some() || s.editor.is_some();
+                }
+            }
+        }
+        info
+    }
+
+    /// Writer's character formatting at the caret, for the Format sheet's toggles.
+    fn writer_marks(&mut self) -> [bool; 4] {
+        let Some(w) = &mut self.writer else { return [false; 4] };
+        let Ok(state) = w.word.session.run("format.state", &json!({})) else { return [false; 4] };
+        let on = |k: &str| state.get(k).and_then(serde_json::Value::as_bool).unwrap_or(false);
+        [on("bold"), on("italic"), on("underline"), on("strike")]
+    }
+
+    /// Carry out what was tapped in the phone bars, on the app showing.
+    fn act(&mut self, ctx: &egui::Context, active: AppKind, act: crate::phone::Act) {
+        use crate::phone::Act;
+        let run = |s: &mut Suite, id: &str, params: serde_json::Value| s.run(active, id, params);
+        match act {
+            Act::Home => self.switch(ctx, None),
+            Act::Switch(kind) => self.switch(ctx, Some(kind)),
+            Act::Ribbon => self.phone.advanced = !self.phone.advanced,
+            Act::Undo => run(self, "edit.undo", json!({})),
+            Act::Redo => run(self, "edit.redo", json!({})),
+            Act::Save => run(self, "file.save", json!({})),
+            Act::Find => run(self, "edit.find", json!({})),
+            Act::File => match active {
+                AppKind::Writer => run(self, "ui.backstage", json!({"value": true})),
+                AppKind::Slides => run(self, "app.backstage", json!({})),
+                AppKind::Sheets => run(self, "ui.backstage", json!({"page": "home"})),
+            },
+            Act::Edit => {
+                run(self, "view.readMode", json!({}));
+                self.want_keyboard = false;
+            }
+            Act::Keyboard => {
+                if let Some(w) = &mut self.writer {
+                    w.word.canvas.want_focus = true;
+                }
+                self.want_keyboard = true;
+            }
+            Act::Cmd(id, mut params) => {
+                // Writer's colour buttons apply the colour last picked, as the ribbon's do.
+                if active == AppKind::Writer
+                    && let Some(w) = &self.writer
+                    && params.as_object().is_some_and(|o| o.is_empty())
+                {
+                    match id {
+                        "format.color" => params = json!({"color": w.word.canvas.last_font_color}),
+                        "format.highlight" => params = json!({"color": w.word.canvas.last_highlight}),
+                        _ => {}
+                    }
+                }
+                run(self, id, params);
+            }
+        }
+        ctx.request_repaint();
+    }
+
+    /// Run one of the active app's commands; Writer's page takes the keyboard focus back after.
+    fn run(&mut self, active: AppKind, id: &str, params: serde_json::Value) {
+        let result = match active {
+            AppKind::Writer => self.writer.as_mut().map(|w| {
+                let r = w.word.run(id, params);
+                if !id.starts_with("ui.") && id != "edit.find" {
+                    w.word.canvas.want_focus = true;
+                }
+                r
+            }),
+            AppKind::Slides => self.slides.as_mut().map(|s| s.run(id, params)),
+            AppKind::Sheets => self.sheets.as_mut().map(|s| s.run(id, params)),
+        };
+        if let Some(Err(e)) = result {
+            log::warn!("{id}: {e}");
+        }
+    }
+
+    /// Whether the active app's ribbon is collapsed to its tabs (tablet: Hide ribbon).
+    fn ribbon_collapsed(&self, active: AppKind) -> bool {
+        match active {
+            AppKind::Writer => self.writer.as_ref().is_some_and(|w| w.word.ui.ribbon_collapsed),
+            AppKind::Slides => self.slides.as_ref().is_some_and(|s| s.ui.ribbon_collapsed),
+            AppKind::Sheets => self.sheets.as_ref().is_some_and(|s| s.ui.ribbon_collapsed),
+        }
+    }
+
+    /// Hide the active app's ribbon (only its tabs stay) or show it again.
+    fn toggle_ribbon(&mut self, active: AppKind) {
+        match active {
+            AppKind::Writer => self.run(active, "ui.collapseRibbon", json!({})),
+            AppKind::Slides | AppKind::Sheets => self.run(active, "view.collapseRibbon", json!({})),
         }
     }
 
@@ -958,8 +1178,17 @@ fn open_button(ui: &mut egui::Ui, width: f32, pal: &Palette) -> egui::Response {
     resp
 }
 
-/// The bar above the app: Home and the three apps. Returns where to go when one is tapped.
-fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option<AppKind>> {
+/// What a tap in the suite bar asks for.
+enum BarAction {
+    /// Show an app (`None`: the home screen).
+    Go(Option<AppKind>),
+    /// Hide or show the app's ribbon.
+    ToggleRibbon,
+}
+
+/// The bar above the app (tablet and wider): Home, the three apps, and Hide ribbon. Returns what
+/// was tapped.
+fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette, collapsed: bool) -> Option<BarAction> {
     let mut go = None;
     egui::Panel::top("suite_bar").exact_size(46.0).frame(egui::Frame::NONE.fill(pal.bg)).show(ui, |ui| {
         let full = ui.max_rect();
@@ -973,7 +1202,7 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option
         }
         paint_home(ui.painter(), Rect::from_center_size(home.center(), vec2(20.0, 20.0)), pal.text);
         if resp.clicked() {
-            go = Some(None);
+            go = Some(BarAction::Go(None));
         }
         ui.painter().line_segment([pos2(home.max.x + 8.0, y - 11.0), pos2(home.max.x + 8.0, y + 11.0)], Stroke::new(1.0, pal.line));
         let mut x = home.max.x + 16.0;
@@ -993,9 +1222,34 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option
             paint_app_icon(ui.painter(), Rect::from_min_size(pos2(r.min.x + 10.0, y - 9.0), vec2(18.0, 18.0)), kind);
             ui.painter().galley(pos2(r.min.x + 36.0, y - galley.size().y / 2.0), galley, ink);
             if resp.clicked() && !selected {
-                go = Some(Some(kind));
+                go = Some(BarAction::Go(Some(kind)));
             }
             x = r.max.x + 6.0;
+        }
+        // Hide ribbon / Show ribbon, at the far end (labelled when there is room).
+        let label = if collapsed { "Show ribbon" } else { "Hide ribbon" };
+        let galley = ui.painter().layout_no_wrap(label.to_string(), egui::FontId::proportional(13.5), pal.dim);
+        let labelled = full.max.x - x > galley.size().x + 60.0;
+        let w = if labelled { galley.size().x + 40.0 } else { 36.0 };
+        let r = Rect::from_min_size(pos2(full.max.x - 10.0 - w, y - 17.0), vec2(w, 34.0));
+        if r.min.x > x {
+            let resp = ui.interact(r, egui::Id::unique("suite_ribbon"), Sense::click());
+            resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, collapsed, label));
+            if resp.hovered() || resp.is_pointer_button_down_on() {
+                ui.painter().rect_filled(r, 17.0, pal.line);
+            }
+            // A chevron: up hides the ribbon, down brings it back.
+            let c = pos2(r.min.x + 18.0, y);
+            let d = if collapsed { 3.0 } else { -3.0 };
+            let s = Stroke::new(1.8, pal.text);
+            ui.painter().line_segment([pos2(c.x - 6.0, c.y - d), pos2(c.x, c.y + d)], s);
+            ui.painter().line_segment([pos2(c.x, c.y + d), pos2(c.x + 6.0, c.y - d)], s);
+            if labelled {
+                ui.painter().galley(pos2(r.min.x + 32.0, y - galley.size().y / 2.0), galley, pal.text);
+            }
+            if resp.clicked() {
+                go = Some(BarAction::ToggleRibbon);
+            }
         }
     });
     go

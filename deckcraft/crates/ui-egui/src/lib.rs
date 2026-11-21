@@ -290,6 +290,10 @@ pub struct SlideApp {
     pub palette: Option<(String, usize)>,
     /// Integrated title bar (macOS traffic lights over our chrome).
     pub integrated_titlebar: bool,
+    /// A host with its own bars (the Android phone layout) turns the title bar off. Not persisted.
+    pub host_title_bar: bool,
+    /// A host with its own bars turns the ribbon (tab row included) off. Not persisted.
+    pub host_ribbon: bool,
     /// The File tab's full-window view (Backstage). Over a presentation it replaces the ribbon,
     /// slides and status bar until Esc or Back; with nothing open it is the start screen. Opening,
     /// creating or closing a presentation leaves it.

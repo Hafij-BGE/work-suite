@@ -614,6 +614,22 @@ fn migrate_units(v: &mut Value) {
 }
 
 /// The application.
+/// The parts of Writer's window chrome that are drawn; all on by default. A host with its own
+/// bars (the Android phone layout) turns the title bar and the ribbon (tab strip included) off.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HostChrome {
+    /// The title bar: AutoSave, Save, Undo/Redo, the title, Search.
+    pub title_bar: bool,
+    /// The ribbon: its tab strip and groups.
+    pub ribbon: bool,
+}
+
+impl Default for HostChrome {
+    fn default() -> Self {
+        HostChrome { title_bar: true, ribbon: true }
+    }
+}
+
 pub struct WordApp {
     pub session: Session,
     pub ui: UiState,
@@ -645,6 +661,9 @@ pub struct WordApp {
     pub(crate) dialog_pick: Option<String>,
     /// macOS: the window has no title bar; leave room for the traffic lights.
     pub integrated_titlebar: bool,
+    /// Which parts of the window's own chrome a host draws itself (a phone shell draws its own
+    /// top bar and tool bar). Not persisted: it describes the host, not a user preference.
+    pub host_chrome: HostChrome,
     /// macOS: the title bar's height and where its content starts, around the traffic lights.
     pub mac_titlebar: chrome::MacTitleBar,
     /// Focus (#1678): the ribbon is dropped down from the Focus bar, over the page.
