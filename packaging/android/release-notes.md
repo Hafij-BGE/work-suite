@@ -17,7 +17,9 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
   type again.
 - An open document stays open: if Android closes WorkSuite in the background (or you swipe it
   away), the same document opens again next time. Unsaved Writer changes are in File › Recover.
-- On a tablet the layout stays as it was, with a new Hide ribbon / Show ribbon button.
+- On a tablet the layout stays as it was, with a new Hide ribbon / Show ribbon button, and
+  Simple view, which uses the phone layout and its floating tool bar on the tablet too. The
+  menu's Tablet layout goes back. The choice is kept.
 - The app starts faster: fonts load in the background while the home screen shows.
 - Fonts you add or download are kept for Slides and Sheets too: they no longer ask for the same
   font again after the app restarts.

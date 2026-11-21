@@ -47,6 +47,8 @@ pub enum Act {
     TextSize(i8),
     /// Show another app.
     Switch(AppKind),
+    /// A tablet showing the phone layout: back to the tablet's own layout.
+    TabletLayout,
     /// Run one of the app's commands.
     Cmd(&'static str, serde_json::Value),
 }
@@ -82,6 +84,8 @@ pub struct BarInfo {
     pub read_mode: bool,
     /// Reading in Web Layout (text wrapped to the screen).
     pub web: bool,
+    /// A tablet showing the phone layout (Simple view): the menu offers Tablet layout.
+    pub tablet: bool,
     /// Hide the tool bar (a dialog, the File view, the start screen).
     pub hide_tools: bool,
     /// Writer's character formatting at the caret (bold, italic, underline, strike).
@@ -184,6 +188,9 @@ impl PhoneUi {
             if kind != info.kind {
                 rows.push((format!("Switch to {}", kind.label()), Act::Switch(kind), false));
             }
+        }
+        if info.tablet {
+            rows.push(("Tablet layout (full ribbon)".into(), Act::TabletLayout, false));
         }
         rows.push(("WorkSuite home".into(), Act::Home, false));
         let width = 248.0;

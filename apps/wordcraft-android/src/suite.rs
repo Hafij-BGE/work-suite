@@ -238,6 +238,9 @@ pub struct Suite {
     /// is written to `paths.resume` when it changes.
     resumed: bool,
     resume_written: Option<String>,
+    /// A tablet uses the phone layout too (the suite bar's Simple view; the phone menu's Tablet
+    /// layout turns it off). Kept as a file in the settings folder while on.
+    simple_on_tablet: bool,
 }
 
 /// The process-wide font database is built (bundled fonts, then the user's own) on a thread of
@@ -273,6 +276,7 @@ fn fonts_ready() {
 impl Suite {
     pub fn new(picker: Rc<Picker>, paths: SuitePaths) -> Suite {
         let fontbar_off = paths.writer_prefs.as_ref().and_then(|p| p.parent()).map(|d| d.join("font-notice-off"));
+        let simple_file = Self::simple_file_of(&paths);
         Suite {
             active: None,
             settling: false,
@@ -297,6 +301,28 @@ impl Suite {
             want_keyboard: false,
             resumed: false,
             resume_written: None,
+            simple_on_tablet: simple_file.as_ref().is_some_and(|f| f.exists()),
+        }
+    }
+
+    /// The file whose presence turns the phone layout on for a tablet.
+    fn simple_file_of(paths: &SuitePaths) -> Option<PathBuf> {
+        paths.writer_prefs.as_ref().and_then(|p| p.parent()).map(|d| d.join("simple-layout"))
+    }
+
+    /// Use the phone layout on a tablet too (`true`), or the tablet's own layout.
+    pub fn set_simple_on_tablet(&mut self, on: bool) {
+        self.simple_on_tablet = on;
+        self.phone.sheet = None;
+        if let Some(file) = Self::simple_file_of(&self.paths) {
+            let done = if on {
+                std::fs::write(&file, b"on\n")
+            } else {
+                std::fs::remove_file(&file).or_else(|e| if e.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(e) })
+            };
+            if let Err(e) = done {
+                log::warn!("{}: {e}", file.display());
+            }
         }
     }
 
@@ -750,10 +776,12 @@ impl Suite {
         self.paint_chrome(&ctx, bar.bg, bar.dark);
         // A phone gets the phone layout (src/phone.rs) in place of the suite bar and the apps'
         // own title bars and ribbons; a tablet keeps the desktop layout.
-        let phone = crate::phone::is_phone(ui.max_rect().size());
+        let small = crate::phone::is_phone(ui.max_rect().size());
+        let phone = small || self.simple_on_tablet;
         self.apply_chrome(active, phone);
         if phone {
-            let info = self.bar_info(active);
+            let mut info = self.bar_info(active);
+            info.tablet = !small;
             if let Some(act) = self.phone.top_bar(ui, &info) {
                 self.act(&ctx, active, act);
                 if self.active != Some(active) {
@@ -770,6 +798,12 @@ impl Suite {
                     return;
                 }
                 Some(BarAction::ToggleRibbon) => self.toggle_ribbon(active),
+                Some(BarAction::Simple) => {
+                    self.set_simple_on_tablet(true);
+                    egui::CentralPanel::default().show(ui, |_| {});
+                    ctx.request_repaint();
+                    return;
+                }
                 None => {}
             }
         }
@@ -846,6 +880,7 @@ impl Suite {
             can_redo: true,
             read_mode: false,
             web: false,
+            tablet: false,
             hide_tools: false,
             marks: [false; 4],
         };
@@ -893,6 +928,7 @@ impl Suite {
             Act::Home => self.switch(ctx, None),
             Act::Switch(kind) => self.switch(ctx, Some(kind)),
             Act::Ribbon => self.phone.advanced = !self.phone.advanced,
+            Act::TabletLayout => self.set_simple_on_tablet(false),
             Act::Undo => run(self, "edit.undo", json!({})),
             Act::Redo => run(self, "edit.redo", json!({})),
             Act::Save => run(self, "file.save", json!({})),
@@ -1294,6 +1330,8 @@ enum BarAction {
     Go(Option<AppKind>),
     /// Hide or show the app's ribbon.
     ToggleRibbon,
+    /// Use the phone layout (top bar and floating tool bar) on this tablet.
+    Simple,
 }
 
 /// The bar above the app (tablet and wider): Home, the three apps, and Hide ribbon. Returns what
@@ -1359,6 +1397,28 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette, collapsed: bool)
             }
             if resp.clicked() {
                 go = Some(BarAction::ToggleRibbon);
+            }
+            // Simple view: the phone layout, with its floating tool bar, on this tablet.
+            let label = "Simple view";
+            let galley = ui.painter().layout_no_wrap(label.to_string(), egui::FontId::proportional(13.5), pal.dim);
+            let labelled = r.min.x - x > galley.size().x + 60.0;
+            let w = if labelled { galley.size().x + 40.0 } else { 36.0 };
+            let s_rect = Rect::from_min_size(pos2(r.min.x - 6.0 - w, y - 17.0), vec2(w, 34.0));
+            if s_rect.min.x > x {
+                let resp = ui.interact(s_rect, egui::Id::unique("suite_simple"), Sense::click());
+                resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
+                if resp.hovered() || resp.is_pointer_button_down_on() {
+                    ui.painter().rect_filled(s_rect, 17.0, pal.line);
+                }
+                // A small pill.
+                let pill = Rect::from_center_size(pos2(s_rect.min.x + 18.0, y), vec2(18.0, 9.0));
+                ui.painter().rect_stroke(pill, 4.5, Stroke::new(1.6, pal.text), egui::StrokeKind::Inside);
+                if labelled {
+                    ui.painter().galley(pos2(s_rect.min.x + 32.0, y - galley.size().y / 2.0), galley, pal.text);
+                }
+                if resp.clicked() {
+                    go = Some(BarAction::Simple);
+                }
             }
         }
     });
@@ -1630,6 +1690,28 @@ mod tests {
         let mut s = Suite::new(Picker::new(None), paths);
         frames(&ctx, &mut s, 1);
         assert_eq!(s.active, None);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_tablet_can_use_the_phone_layout_and_keeps_that_choice() {
+        let ctx = egui::Context::default();
+        let dir = temp("simple");
+        let paths = SuitePaths { writer_prefs: Some(dir.join("ui.json")), ..Default::default() };
+        let tablet = Rect::from_min_size(pos2(0.0, 0.0), vec2(1200.0, 800.0));
+        let mut s = Suite::new(Picker::new(None), paths.clone());
+        s.switch(&ctx, Some(AppKind::Writer));
+        frames_with(&ctx, &mut s, 3, tablet);
+        assert!(s.writer.as_ref().unwrap().word.host_chrome.title_bar, "a tablet keeps its own layout");
+        s.set_simple_on_tablet(true);
+        frames_with(&ctx, &mut s, 2, tablet);
+        assert!(!s.writer.as_ref().unwrap().word.host_chrome.title_bar, "Simple view: the phone layout");
+        // Kept for the next start; Tablet layout turns it off again.
+        let mut s = Suite::new(Picker::new(None), paths);
+        assert!(s.simple_on_tablet);
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::TabletLayout);
+        assert!(!s.simple_on_tablet);
+        assert!(!dir.join("simple-layout").exists());
         let _ = std::fs::remove_dir_all(dir);
     }
 
