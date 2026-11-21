@@ -902,16 +902,16 @@ impl Suite {
             },
             Act::Edit => {
                 self.phone.reading = false;
-                if let Some(w) = &mut self.writer {
-                    let _ = w.word.run("view.printLayout", json!({}));
-                }
                 self.want_keyboard = false;
             }
             Act::Read => {
                 self.phone.reading = true;
                 self.phone.sheet = None;
                 if let Some(w) = &mut self.writer {
-                    let _ = w.word.run("view.webLayout", json!({}));
+                    // The page as it prints (Web Layout misplaces floating text boxes), as wide as
+                    // the screen.
+                    let _ = w.word.run("view.printLayout", json!({}));
+                    let _ = w.word.run("view.pageWidth", json!({}));
                     w.word.canvas.want_focus = false;
                 }
                 self.want_keyboard = false;
@@ -1615,10 +1615,10 @@ mod tests {
         frames(&ctx, &mut s, 3);
         let view = &s.writer.as_ref().unwrap().word.session.view;
         assert!(!view.read_mode, "no Read Mode: the document opens for editing");
-        // The tool bar's Read: text wraps to the screen, and typing is kept out.
+        // The tool bar's Read: the page fits the screen's width, and typing is kept out.
         s.act(&ctx, AppKind::Writer, crate::phone::Act::Read);
         assert!(s.phone.reading);
-        assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Web");
+        assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Print", "the page as it prints");
         let window = Rect::from_min_size(pos2(0.0, 0.0), vec2(420.0, 860.0));
         for _ in 0..3 {
             let mut raw = egui::RawInput { screen_rect: Some(window), events: vec![egui::Event::Text("x".into())], ..Default::default() };
@@ -1632,7 +1632,7 @@ mod tests {
         let w = s.writer.as_ref().unwrap();
         assert_eq!(w.word.session.doc.plain_text(wordcraft_doc::StoryRef::Body).trim(), "Dear committee", "typing doesn't change it");
         assert!(!w.word.session.dirty);
-        // Edit: back to Print Layout, for editing.
+        // Edit: typing works again.
         s.act(&ctx, AppKind::Writer, crate::phone::Act::Edit);
         assert!(!s.phone.reading);
         assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Print");

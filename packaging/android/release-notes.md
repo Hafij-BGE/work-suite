@@ -11,8 +11,8 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 - A floating tool bar at the bottom has what most edits need: Format (bold, italic, underline,
   strikethrough, text size, colour, highlight), Paragraph (alignment, lists, indent), Picture,
   Find, Keyboard and Read. Ribbon shows the full ribbon when you need more.
-- Documents open ready to edit, no longer in Read Mode. Read in the tool bar wraps the text to
-  the screen and keeps typing out; Edit goes back to the page.
+- Documents open ready to edit, no longer in Read Mode. Read in the tool bar fits the page to
+  the screen's width and keeps typing out; Edit lets you type again.
 - An open document stays open: if Android closes WorkSuite in the background (or you swipe it
   away), the same document opens again next time. Unsaved Writer changes are in File › Recover.
 - On a tablet the layout stays as it was, with a new Hide ribbon / Show ribbon button.

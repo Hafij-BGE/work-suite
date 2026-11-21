@@ -39,7 +39,7 @@ pub enum Act {
     Keyboard,
     /// Leave reading and edit the document.
     Edit,
-    /// Read the document: text wrapped to the screen, typing kept out.
+    /// Read the document: the page as wide as the screen, typing kept out.
     Read,
     /// Show another app.
     Switch(AppKind),
@@ -63,8 +63,8 @@ pub struct PhoneUi {
     pub sheet: Option<Sheet>,
     /// The top bar's menu is open.
     menu: bool,
-    /// Writer's document shows for reading (the tool bar's Read): text wrapped to the screen
-    /// (Web Layout), and typing and the keyboard kept out until Edit.
+    /// Writer's document shows for reading (the tool bar's Read): the page as wide as the
+    /// screen, and typing and the keyboard kept out until Edit.
     pub reading: bool,
 }
 
