@@ -64,6 +64,14 @@ fn main() {
             s.ui.ribbon_tab = tab.clone();
         }
     }
+    // The phone layout's full ribbon (WORKSUITE_SHOT_ADVANCED=1) or a tool sheet
+    // (WORKSUITE_SHOT_SHEET=format|paragraph).
+    suite.phone.advanced = std::env::var_os("WORKSUITE_SHOT_ADVANCED").is_some();
+    suite.phone.sheet = match std::env::var("WORKSUITE_SHOT_SHEET").as_deref() {
+        Ok("format") => Some(wordcraft_android::phone::Sheet::Format),
+        Ok("paragraph") => Some(wordcraft_android::phone::Sheet::Paragraph),
+        _ => None,
+    };
     let mut textures: HashMap<TextureId, ([usize; 2], Vec<Color32>)> = HashMap::new();
     let mut last = None;
     for _ in 0..8 {

@@ -33,10 +33,9 @@ fn android_main(app: AndroidApp) {
     folders.export();
     // Fonts added in Writer (or installed from the font bar) are kept in `fonts` in the settings
     // folder, as on the desktop: load them, and keep fonts added later there.
-    if let Some(dir) = folders.settings.as_ref().map(|d| d.join("fonts")).filter(|d| made(d)) {
-        let (loaded, skipped) = wordcraft_fonts::FontDb::global().load_user_fonts(&dir);
-        log::info!("user fonts: {} loaded, {} skipped", loaded.len(), skipped.len());
-    }
+    // Built on a thread of its own while the home screen comes up; an app waits for it when it
+    // is first opened.
+    crate::suite::warm_fonts(folders.settings.as_ref().map(|d| d.join("fonts")).filter(|d| made(d)));
     let mut options = eframe::NativeOptions { android_app: Some(app.clone()), ..Default::default() };
     options.viewport = options.viewport.with_title(SUITE_NAME);
     let result = eframe::run_native(
@@ -51,6 +50,7 @@ fn android_main(app: AndroidApp) {
                     writer_prefs: folders.settings.as_ref().map(|d| d.join("ui.json")),
                     recovery: folders.settings.as_ref().map(|d| d.join("recovery")),
                     copies: folders.copies.clone(),
+                    resume: folders.settings.as_ref().map(|d| d.join("resume.json")),
                 },
             );
             Ok(Box::new(App { suite, android: app, saf, synced_at: 0.0, light_bars: None }))
@@ -186,6 +186,16 @@ impl Folders {
                 unsafe {
                     std::env::set_var(name, dir);
                 }
+            }
+        }
+        // Fonts added in any app (or from the font bar) are kept in `settings/fonts`, which
+        // Writer loads at start. Slides and Sheets read it too as an extra font folder: without
+        // it they forgot those fonts on every start, and the font bar asked for them again.
+        if let Some(fonts) = self.settings.as_ref().map(|d| d.join("fonts")) {
+            // SAFETY: as above.
+            #[allow(unsafe_code)]
+            unsafe {
+                std::env::set_var("CRAFT_EXTRA_FONT_DIRS", fonts);
             }
         }
     }

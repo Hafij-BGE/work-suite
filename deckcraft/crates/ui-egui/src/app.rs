@@ -80,6 +80,8 @@ impl SlideApp {
             canvas_region: None,
             palette: None,
             integrated_titlebar: false,
+            host_title_bar: true,
+            host_ribbon: true,
             backstage: None,
             community_link: true,
             pending_urls: vec![],
@@ -317,9 +319,13 @@ impl SlideApp {
         self.sync_backstage();
         self.keyboard(&ctx);
         self.sync_backstage();
-        ribbon::title_bar(self, ui);
+        if self.host_title_bar {
+            ribbon::title_bar(self, ui);
+        }
         if self.backstage.is_none() && self.session.active().is_some() {
-            ribbon::show(self, ui);
+            if self.host_ribbon {
+                ribbon::show(self, ui);
+            }
             status::status_bar(self, ui);
         }
         let now = ui.input(|i| i.time);

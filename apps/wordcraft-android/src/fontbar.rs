@@ -398,6 +398,21 @@ fn card(bar: &mut FontBar, apps: &mut Apps, active: AppKind, ui: &mut Ui, c: &Co
                         }
                     });
                 }
+                if !microsoft && fontget::microsoft_not_free(&name) {
+                    ui.add_space(6.0);
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(format!(
+                                "Microsoft has no free download of “{name}”: it comes with Windows and Office. Import your own copy \
+                                 (from C:\\Windows\\Fonts on a Windows PC) with Import fonts…, or use the free stand-in. \
+                                 Fonts you add are kept for Writer, Slides and Sheets."
+                            ))
+                            .size(12.5)
+                            .weak(),
+                        )
+                        .wrap(),
+                    );
+                }
                 if microsoft {
                     ui.add_space(6.0);
                     ui.horizontal_wrapped(|ui| {
@@ -486,6 +501,12 @@ fn poll_download(bar: &mut FontBar, apps: &mut Apps, active: AppKind, now: f64) 
 /// The open document's fonts that aren't installed, and a key naming the document (so a closed
 /// bar comes back for the next one). `None` before a document shows.
 fn missing_fonts(apps: &mut Apps, active: AppKind) -> Option<(String, Vec<Missing>)> {
+    let (key, mut list) = missing_fonts_of(apps, active)?;
+    list.retain(|m| !is_generic_family(&m.name));
+    Some((key, list))
+}
+
+fn missing_fonts_of(apps: &mut Apps, active: AppKind) -> Option<(String, Vec<Missing>)> {
     match active {
         AppKind::Writer => {
             let w = apps.writer.as_mut()?;
@@ -529,6 +550,29 @@ fn missing_fonts(apps: &mut Apps, active: AppKind) -> Option<(String, Vec<Missin
             Some((format!("sheets:{uid}"), list))
         }
     }
+}
+
+/// A generic family name (CSS, LibreOffice, Google Docs: "Sans Serif", "serif", "monospace"…),
+/// not a font anyone can install: every app draws it with its own font of that kind.
+pub(crate) fn is_generic_family(name: &str) -> bool {
+    let n: String = name.trim().to_lowercase().chars().filter(|c| c.is_alphanumeric()).collect();
+    matches!(
+        n.as_str(),
+        "sans"
+            | "sansserif"
+            | "serif"
+            | "mono"
+            | "monospace"
+            | "monospaced"
+            | "cursive"
+            | "fantasy"
+            | "systemui"
+            | "uisansserif"
+            | "uiserif"
+            | "uimonospace"
+            | "default"
+            | "normal"
+    )
 }
 
 /// Slides and Sheets say once per document that its fonts aren't installed; the bar says it instead.
@@ -955,6 +999,16 @@ fn option_row(ui: &mut Ui, icon: &str, title: &str, sub: &str, fill: Option<Colo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generic_family_names_are_never_missing() {
+        for n in ["Sans Serif", "sans-serif", "Serif", "monospace", "ui-sans-serif"] {
+            assert!(is_generic_family(n), "{n}");
+        }
+        for n in ["Calibri", "Microsoft Sans Serif", "Noto Sans", "Sans Forgetica"] {
+            assert!(!is_generic_family(n), "{n}");
+        }
+    }
 
     #[test]
     fn similar_fonts_start_with_metric_compatible_ones() {

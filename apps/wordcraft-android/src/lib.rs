@@ -21,6 +21,7 @@
 mod android;
 pub mod fontbar;
 mod fontget;
+pub mod phone;
 #[cfg(target_os = "android")]
 mod saf;
 pub mod shell;

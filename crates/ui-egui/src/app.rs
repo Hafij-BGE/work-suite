@@ -103,6 +103,7 @@ impl WordApp {
             printing: Default::default(),
             print_feedback_seen: None,
             integrated_titlebar: false,
+            host_chrome: crate::HostChrome::default(),
             mac_titlebar: chrome::MacTitleBar::default(),
             updates_rt: updates_ui::Runtime::default(),
             packs_rt: Default::default(),

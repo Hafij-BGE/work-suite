@@ -192,6 +192,9 @@ pub struct SuitePaths {
     pub recovery: Option<PathBuf>,
     /// Where Android's file picker puts the editors' copies of picked documents (see `saf.rs`).
     pub copies: Option<PathBuf>,
+    /// Which app and document were showing (`resume.json`): Android may end the process while
+    /// the suite is in the background, and the next start opens them again.
+    pub resume: Option<PathBuf>,
 }
 
 /// The suite: its home screen and the three apps.
@@ -227,11 +230,53 @@ pub struct Suite {
     pub chrome_dark: bool,
     /// The bar over a document whose fonts aren't installed (src/fontbar.rs).
     pub fontbar: crate::fontbar::FontBar,
+    /// The phone layout's bars (src/phone.rs): used while the window is phone-sized.
+    pub phone: crate::phone::PhoneUi,
+    /// The phone tool bar's Keyboard was tapped: the host brings the soft keyboard up.
+    want_keyboard: bool,
+    /// The document of the last run is open again (or there was none): from then on what shows
+    /// is written to `paths.resume` when it changes.
+    resumed: bool,
+    resume_written: Option<String>,
+    /// A tablet uses the phone layout too (the suite bar's Simple view; the phone menu's Tablet
+    /// layout turns it off). Kept as a file in the settings folder while on.
+    simple_on_tablet: bool,
+}
+
+/// The process-wide font database is built (bundled fonts, then the user's own) on a thread of
+/// its own while the home screen shows, instead of before the first frame.
+static FONT_WARMUP: std::sync::Mutex<Option<std::thread::JoinHandle<()>>> = std::sync::Mutex::new(None);
+
+/// Start building the font database in the background, loading the fonts in `user_fonts` too.
+pub fn warm_fonts(user_fonts: Option<PathBuf>) {
+    let handle = std::thread::Builder::new()
+        .name("font-warmup".into())
+        .spawn(move || {
+            let db = wordcraft_fonts::FontDb::global();
+            if let Some(dir) = user_fonts {
+                let (loaded, skipped) = db.load_user_fonts(&dir);
+                log::info!("user fonts: {} loaded, {} skipped", loaded.len(), skipped.len());
+            }
+        })
+        .map_err(|e| log::warn!("font warm-up thread: {e}"))
+        .ok();
+    if let Ok(mut slot) = FONT_WARMUP.lock() {
+        *slot = handle;
+    }
+}
+
+/// Wait for the background font load (an app is about to lay text out with it).
+fn fonts_ready() {
+    let handle = FONT_WARMUP.lock().ok().and_then(|mut slot| slot.take());
+    if let Some(h) = handle {
+        let _ = h.join();
+    }
 }
 
 impl Suite {
     pub fn new(picker: Rc<Picker>, paths: SuitePaths) -> Suite {
         let fontbar_off = paths.writer_prefs.as_ref().and_then(|p| p.parent()).map(|d| d.join("font-notice-off"));
+        let simple_file = Self::simple_file_of(&paths);
         Suite {
             active: None,
             settling: false,
@@ -252,6 +297,32 @@ impl Suite {
             chrome: Color32::BLACK,
             chrome_dark: true,
             fontbar: crate::fontbar::FontBar::new(fontbar_off),
+            phone: crate::phone::PhoneUi::default(),
+            want_keyboard: false,
+            resumed: false,
+            resume_written: None,
+            simple_on_tablet: simple_file.as_ref().is_some_and(|f| f.exists()),
+        }
+    }
+
+    /// The file whose presence turns the phone layout on for a tablet.
+    fn simple_file_of(paths: &SuitePaths) -> Option<PathBuf> {
+        paths.writer_prefs.as_ref().and_then(|p| p.parent()).map(|d| d.join("simple-layout"))
+    }
+
+    /// Use the phone layout on a tablet too (`true`), or the tablet's own layout.
+    pub fn set_simple_on_tablet(&mut self, on: bool) {
+        self.simple_on_tablet = on;
+        self.phone.sheet = None;
+        if let Some(file) = Self::simple_file_of(&self.paths) {
+            let done = if on {
+                std::fs::write(&file, b"on\n")
+            } else {
+                std::fs::remove_file(&file).or_else(|e| if e.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(e) })
+            };
+            if let Err(e) = done {
+                log::warn!("{}: {e}", file.display());
+            }
         }
     }
 
@@ -364,6 +435,7 @@ impl Suite {
     }
 
     fn ensure(&mut self, ctx: &egui::Context, kind: AppKind) {
+        fonts_ready();
         match kind {
             AppKind::Writer if self.writer.is_none() => {
                 let mut shell = Shell::new(writer_services(&self.picker, self.paths.copies.clone()), self.paths.writer_prefs.clone());
@@ -402,15 +474,13 @@ impl Suite {
             AppKind::Writer => {
                 if let Some(w) = &mut self.writer {
                     match w.word.run("file.open", json!({ "path": path })) {
-                        // The document shows at once, not the start screen it opened over, in Read Mode:
-                        // reading first, as on a phone; Edit Document (or the View tab) edits it.
+                        // The document shows at once, not the start screen it opened over, ready to
+                        // edit; the keyboard waits for a tap on the page (the phone tool bar's Read
+                        // keeps typing out while reading).
                         Ok(_) => {
                             w.word.ui.backstage = false;
                             self.writer_fresh = false;
-                            if let Err(e) = w.word.run("view.readMode", json!({})) {
-                                log::warn!("Read Mode: {e}");
-                                w.word.canvas.want_focus = true;
-                            }
+                            self.phone.reading = false;
                         }
                         Err(e) => log::warn!("{path}: {e}"),
                     }
@@ -429,6 +499,49 @@ impl Suite {
                     s.open_path(path);
                 }
             }
+        }
+    }
+
+    /// What shows now, for `resume.json`: the active app and its document's file.
+    fn resume_state(&self) -> String {
+        let (app, path) = match self.active {
+            None => ("home", None),
+            Some(AppKind::Writer) => {
+                ("writer", self.writer.as_ref().and_then(|w| w.word.session.path.as_ref()).map(|p| p.to_string_lossy().into_owned()))
+            }
+            Some(AppKind::Slides) => ("slides", self.slides.as_ref().and_then(|s| s.session.doc().ok()).and_then(|d| d.path.clone())),
+            Some(AppKind::Sheets) => ("sheets", self.sheets.as_ref().and_then(|s| s.session.doc().ok()).and_then(|d| d.path.clone())),
+        };
+        json!({ "app": app, "path": path }).to_string()
+    }
+
+    /// The first frame opens what showed when the last run ended; later frames record what
+    /// shows whenever it changes.
+    fn keep_resume(&mut self, ctx: &egui::Context) {
+        let Some(file) = self.paths.resume.clone() else { return };
+        if !std::mem::replace(&mut self.resumed, true) {
+            let last: serde_json::Value = std::fs::read_to_string(&file).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+            let path = last["path"].as_str().filter(|p| Path::new(p).is_file());
+            let app = match last["app"].as_str() {
+                Some("writer") => Some(AppKind::Writer),
+                Some("slides") => Some(AppKind::Slides),
+                Some("sheets") => Some(AppKind::Sheets),
+                _ => None,
+            };
+            match (app, path) {
+                (Some(kind), Some(path)) if AppKind::for_path(path) == kind => self.open_in_app(ctx, path),
+                (Some(kind), _) => self.switch(ctx, Some(kind)),
+                (None, _) => {}
+            }
+            self.resume_written = Some(self.resume_state());
+            return;
+        }
+        let now = self.resume_state();
+        if self.resume_written.as_deref() != Some(now.as_str()) {
+            if let Err(e) = std::fs::write(&file, &now) {
+                log::warn!("{}: {e}", file.display());
+            }
+            self.resume_written = Some(now);
         }
     }
 
@@ -527,6 +640,9 @@ impl Suite {
         if self.active == Some(AppKind::Writer)
             && let Some(w) = &mut self.writer
         {
+            if self.phone.reading {
+                keep_typing_out(raw);
+            }
             return w.raw_input(ctx, raw);
         }
         let wait = self.touch.process(raw);
@@ -610,11 +726,16 @@ impl Suite {
     /// The frame's logic. Returns whether the soft keyboard should come up now (a tap put Writer's
     /// caret on the page).
     pub fn logic(&mut self, ctx: &egui::Context) -> bool {
+        self.keep_resume(ctx);
         if self.writer_fresh && self.writer.as_ref().is_some_and(|w| !w.word.ui.backstage) {
             self.writer_fresh = false;
         }
         match self.active {
-            Some(AppKind::Writer) => self.writer.as_mut().is_some_and(|w| w.logic(ctx)),
+            Some(AppKind::Writer) => {
+                let tapped = self.writer.as_mut().is_some_and(|w| w.logic(ctx));
+                // Reading: a tap on the page selects or follows a link, but brings no keyboard.
+                std::mem::take(&mut self.want_keyboard) || (tapped && !self.phone.reading)
+            }
             Some(AppKind::Slides) => {
                 if let Some(s) = &mut self.slides {
                     s.logic(ctx);
@@ -653,10 +774,38 @@ impl Suite {
         // The bar follows the app's own light or dark look.
         let bar = Palette::bar(ui.visuals().dark_mode);
         self.paint_chrome(&ctx, bar.bg, bar.dark);
-        if let Some(go) = suite_bar(ui, active, &bar) {
-            self.switch(&ctx, go);
-            egui::CentralPanel::default().show(ui, |_| {});
-            return;
+        // A phone gets the phone layout (src/phone.rs) in place of the suite bar and the apps'
+        // own title bars and ribbons; a tablet keeps the desktop layout.
+        let small = crate::phone::is_phone(ui.max_rect().size());
+        let phone = small || self.simple_on_tablet;
+        self.apply_chrome(active, phone);
+        if phone {
+            let mut info = self.bar_info(active);
+            info.tablet = !small;
+            if let Some(act) = self.phone.top_bar(ui, &info) {
+                self.act(&ctx, active, act);
+                if self.active != Some(active) {
+                    egui::CentralPanel::default().show(ui, |_| {});
+                    return;
+                }
+                self.apply_chrome(active, phone);
+            }
+        } else {
+            match suite_bar(ui, active, &bar, self.ribbon_collapsed(active)) {
+                Some(BarAction::Go(go)) => {
+                    self.switch(&ctx, go);
+                    egui::CentralPanel::default().show(ui, |_| {});
+                    return;
+                }
+                Some(BarAction::ToggleRibbon) => self.toggle_ribbon(active),
+                Some(BarAction::Simple) => {
+                    self.set_simple_on_tablet(true);
+                    egui::CentralPanel::default().show(ui, |_| {});
+                    ctx.request_repaint();
+                    return;
+                }
+                None => {}
+            }
         }
         if std::mem::take(&mut self.settling) {
             // The app's fonts become active next frame.
@@ -685,6 +834,209 @@ impl Suite {
                     s.ui(ui);
                 }
             }
+        }
+        if phone && self.active == Some(active) {
+            let mut info = self.bar_info(active);
+            if active == AppKind::Writer && self.phone.sheet == Some(crate::phone::Sheet::Format) {
+                info.marks = self.writer_marks();
+            }
+            if let Some(act) = self.phone.tool_bar(&ctx, &info) {
+                self.act(&ctx, active, act);
+            }
+        }
+    }
+
+    /// Which of the active app's own bars show: on a phone the suite draws its own instead of
+    /// the title bar, and the ribbon only when asked for (Advanced ribbon).
+    fn apply_chrome(&mut self, active: AppKind, phone: bool) {
+        let ribbon = !phone || self.phone.advanced;
+        match active {
+            AppKind::Writer => {
+                if let Some(w) = &mut self.writer {
+                    w.word.host_chrome = wordcraft_ui_egui::HostChrome { title_bar: !phone, ribbon };
+                }
+            }
+            AppKind::Slides => {
+                if let Some(s) = &mut self.slides {
+                    s.host_title_bar = !phone;
+                    s.host_ribbon = ribbon;
+                }
+            }
+            AppKind::Sheets => {
+                if let Some(s) = &mut self.sheets {
+                    s.chrome.title_bar = !phone;
+                    s.chrome.ribbon = ribbon;
+                }
+            }
+        }
+    }
+
+    /// What the phone bars show about the active app.
+    fn bar_info(&self, active: AppKind) -> crate::phone::BarInfo {
+        let mut info = crate::phone::BarInfo {
+            kind: active,
+            title: active.label().to_string(),
+            can_undo: true,
+            can_redo: true,
+            read_mode: false,
+            web: false,
+            tablet: false,
+            hide_tools: false,
+            marks: [false; 4],
+        };
+        match active {
+            AppKind::Writer => {
+                if let Some(w) = &self.writer {
+                    let word = &w.word;
+                    info.hide_tools = word.ui.backstage || word.dialog.is_some() || !word.has_document();
+                    if !word.ui.backstage && word.has_document() {
+                        info.title = word.title_stem();
+                        info.can_undo = word.session.can_undo();
+                        info.can_redo = word.session.can_redo();
+                        info.read_mode = self.phone.reading;
+                        info.web = format!("{:?}", word.session.view.mode) == "Web";
+                    }
+                }
+            }
+            AppKind::Slides => {
+                if let Some(s) = &self.slides {
+                    info.hide_tools = s.backstage.is_some() || s.dialog.is_some() || s.show.is_some() || s.session.active().is_none();
+                }
+            }
+            AppKind::Sheets => {
+                if let Some(s) = &self.sheets {
+                    info.hide_tools = s.backstage.is_some() || s.dialog.is_some() || s.editor.is_some();
+                }
+            }
+        }
+        info
+    }
+
+    /// Writer's character formatting at the caret, for the Format sheet's toggles.
+    fn writer_marks(&mut self) -> [bool; 4] {
+        let Some(w) = &mut self.writer else { return [false; 4] };
+        let Ok(state) = w.word.session.run("format.state", &json!({})) else { return [false; 4] };
+        let on = |k: &str| state.get(k).and_then(serde_json::Value::as_bool).unwrap_or(false);
+        [on("bold"), on("italic"), on("underline"), on("strike")]
+    }
+
+    /// Carry out what was tapped in the phone bars, on the app showing.
+    fn act(&mut self, ctx: &egui::Context, active: AppKind, act: crate::phone::Act) {
+        use crate::phone::Act;
+        let run = |s: &mut Suite, id: &str, params: serde_json::Value| s.run(active, id, params);
+        match act {
+            Act::Home => self.switch(ctx, None),
+            Act::Switch(kind) => self.switch(ctx, Some(kind)),
+            Act::Ribbon => self.phone.advanced = !self.phone.advanced,
+            Act::TabletLayout => self.set_simple_on_tablet(false),
+            Act::Undo => run(self, "edit.undo", json!({})),
+            Act::Redo => run(self, "edit.redo", json!({})),
+            Act::Save => run(self, "file.save", json!({})),
+            Act::Find => run(self, "edit.find", json!({})),
+            Act::File => match active {
+                AppKind::Writer => run(self, "ui.backstage", json!({"value": true})),
+                AppKind::Slides => run(self, "app.backstage", json!({})),
+                AppKind::Sheets => run(self, "ui.backstage", json!({"page": "home"})),
+            },
+            Act::Edit => {
+                self.phone.reading = false;
+                // Editing on the printed page (Web Layout misplaces floating text boxes).
+                if let Some(w) = &mut self.writer
+                    && format!("{:?}", w.word.session.view.mode) == "Web"
+                {
+                    let _ = w.word.run("view.printLayout", json!({}));
+                    let _ = w.word.run("view.pageWidth", json!({}));
+                }
+                self.want_keyboard = false;
+            }
+            Act::Read => {
+                self.phone.reading = true;
+                self.phone.sheet = None;
+                if let Some(w) = &mut self.writer {
+                    // The page as it prints (Web Layout misplaces floating text boxes), as wide as
+                    // the screen.
+                    let _ = w.word.run("view.printLayout", json!({}));
+                    let _ = w.word.run("view.pageWidth", json!({}));
+                    w.word.canvas.want_focus = false;
+                }
+                self.want_keyboard = false;
+            }
+            Act::ReadWeb(web) => {
+                if let Some(w) = &mut self.writer {
+                    if web {
+                        // Text wrapped to the screen, at a size made for reading.
+                        let _ = w.word.run("view.webLayout", json!({}));
+                        let _ = w.word.run("view.zoom", json!({"value": 100}));
+                    } else {
+                        let _ = w.word.run("view.printLayout", json!({}));
+                        let _ = w.word.run("view.pageWidth", json!({}));
+                    }
+                    w.word.canvas.want_focus = false;
+                }
+            }
+            Act::TextSize(step) => {
+                if let Some(w) = &mut self.writer {
+                    let pct = (w.word.session.view.zoom * 100.0 / 5.0).round() * 5.0 + f32::from(step) * 20.0;
+                    let _ = w.word.run("view.zoom", json!({"value": pct.clamp(25.0, 300.0)}));
+                    w.word.canvas.want_focus = false;
+                }
+            }
+            Act::Keyboard => {
+                if let Some(w) = &mut self.writer {
+                    w.word.canvas.want_focus = true;
+                }
+                self.want_keyboard = true;
+            }
+            Act::Cmd(id, mut params) => {
+                // Writer's colour buttons apply the colour last picked, as the ribbon's do.
+                if active == AppKind::Writer
+                    && let Some(w) = &self.writer
+                    && params.as_object().is_some_and(|o| o.is_empty())
+                {
+                    match id {
+                        "format.color" => params = json!({"color": w.word.canvas.last_font_color}),
+                        "format.highlight" => params = json!({"color": w.word.canvas.last_highlight}),
+                        _ => {}
+                    }
+                }
+                run(self, id, params);
+            }
+        }
+        ctx.request_repaint();
+    }
+
+    /// Run one of the active app's commands; Writer's page takes the keyboard focus back after.
+    fn run(&mut self, active: AppKind, id: &str, params: serde_json::Value) {
+        let result = match active {
+            AppKind::Writer => self.writer.as_mut().map(|w| {
+                let r = w.word.run(id, params);
+                if !id.starts_with("ui.") && id != "edit.find" {
+                    w.word.canvas.want_focus = true;
+                }
+                r
+            }),
+            AppKind::Slides => self.slides.as_mut().map(|s| s.run(id, params)),
+            AppKind::Sheets => self.sheets.as_mut().map(|s| s.run(id, params)),
+        };
+        if let Some(Err(e)) = result {
+            log::warn!("{id}: {e}");
+        }
+    }
+
+    /// Whether the active app's ribbon is collapsed to its tabs (tablet: Hide ribbon).
+    fn ribbon_collapsed(&self, active: AppKind) -> bool {
+        match active {
+            AppKind::Writer => self.writer.as_ref().is_some_and(|w| w.word.ui.ribbon_collapsed),
+            AppKind::Slides => self.slides.as_ref().is_some_and(|s| s.ui.ribbon_collapsed),
+            AppKind::Sheets => self.sheets.as_ref().is_some_and(|s| s.ui.ribbon_collapsed),
+        }
+    }
+
+    /// Hide the active app's ribbon (only its tabs stay) or show it again.
+    fn toggle_ribbon(&mut self, active: AppKind) {
+        match active {
+            AppKind::Writer => self.run(active, "ui.collapseRibbon", json!({})),
+            AppKind::Slides | AppKind::Sheets => self.run(active, "view.collapseRibbon", json!({})),
         }
     }
 
@@ -834,6 +1186,20 @@ impl Suite {
 }
 
 /// Removes Android's Back (the browser's Back key) from a frame's input; whether it was pressed.
+/// Reading on a phone: what would change the document (typed text, pasting, cutting, deleting,
+/// Enter) is dropped; moving around, selecting and copying still work.
+fn keep_typing_out(raw: &mut egui::RawInput) {
+    use egui::{Event, Key};
+    raw.events.retain(|e| match e {
+        Event::Text(_) | Event::Paste(_) | Event::Cut | Event::Ime(_) => false,
+        Event::Key { key, modifiers, .. } => {
+            !matches!(key, Key::Backspace | Key::Delete | Key::Enter | Key::Tab)
+                && !(modifiers.command && matches!(key, Key::Z | Key::Y | Key::V | Key::X))
+        }
+        _ => true,
+    });
+}
+
 fn take_back(raw: &mut egui::RawInput) -> bool {
     let mut pressed = false;
     raw.events.retain(|e| match e {
@@ -958,8 +1324,19 @@ fn open_button(ui: &mut egui::Ui, width: f32, pal: &Palette) -> egui::Response {
     resp
 }
 
-/// The bar above the app: Home and the three apps. Returns where to go when one is tapped.
-fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option<AppKind>> {
+/// What a tap in the suite bar asks for.
+enum BarAction {
+    /// Show an app (`None`: the home screen).
+    Go(Option<AppKind>),
+    /// Hide or show the app's ribbon.
+    ToggleRibbon,
+    /// Use the phone layout (top bar and floating tool bar) on this tablet.
+    Simple,
+}
+
+/// The bar above the app (tablet and wider): Home, the three apps, and Hide ribbon. Returns what
+/// was tapped.
+fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette, collapsed: bool) -> Option<BarAction> {
     let mut go = None;
     egui::Panel::top("suite_bar").exact_size(46.0).frame(egui::Frame::NONE.fill(pal.bg)).show(ui, |ui| {
         let full = ui.max_rect();
@@ -973,7 +1350,7 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option
         }
         paint_home(ui.painter(), Rect::from_center_size(home.center(), vec2(20.0, 20.0)), pal.text);
         if resp.clicked() {
-            go = Some(None);
+            go = Some(BarAction::Go(None));
         }
         ui.painter().line_segment([pos2(home.max.x + 8.0, y - 11.0), pos2(home.max.x + 8.0, y + 11.0)], Stroke::new(1.0, pal.line));
         let mut x = home.max.x + 16.0;
@@ -993,9 +1370,56 @@ fn suite_bar(ui: &mut egui::Ui, active: AppKind, pal: &Palette) -> Option<Option
             paint_app_icon(ui.painter(), Rect::from_min_size(pos2(r.min.x + 10.0, y - 9.0), vec2(18.0, 18.0)), kind);
             ui.painter().galley(pos2(r.min.x + 36.0, y - galley.size().y / 2.0), galley, ink);
             if resp.clicked() && !selected {
-                go = Some(Some(kind));
+                go = Some(BarAction::Go(Some(kind)));
             }
             x = r.max.x + 6.0;
+        }
+        // Hide ribbon / Show ribbon, at the far end (labelled when there is room).
+        let label = if collapsed { "Show ribbon" } else { "Hide ribbon" };
+        let galley = ui.painter().layout_no_wrap(label.to_string(), egui::FontId::proportional(13.5), pal.dim);
+        let labelled = full.max.x - x > galley.size().x + 60.0;
+        let w = if labelled { galley.size().x + 40.0 } else { 36.0 };
+        let r = Rect::from_min_size(pos2(full.max.x - 10.0 - w, y - 17.0), vec2(w, 34.0));
+        if r.min.x > x {
+            let resp = ui.interact(r, egui::Id::unique("suite_ribbon"), Sense::click());
+            resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, collapsed, label));
+            if resp.hovered() || resp.is_pointer_button_down_on() {
+                ui.painter().rect_filled(r, 17.0, pal.line);
+            }
+            // A chevron: up hides the ribbon, down brings it back.
+            let c = pos2(r.min.x + 18.0, y);
+            let d = if collapsed { 3.0 } else { -3.0 };
+            let s = Stroke::new(1.8, pal.text);
+            ui.painter().line_segment([pos2(c.x - 6.0, c.y - d), pos2(c.x, c.y + d)], s);
+            ui.painter().line_segment([pos2(c.x, c.y + d), pos2(c.x + 6.0, c.y - d)], s);
+            if labelled {
+                ui.painter().galley(pos2(r.min.x + 32.0, y - galley.size().y / 2.0), galley, pal.text);
+            }
+            if resp.clicked() {
+                go = Some(BarAction::ToggleRibbon);
+            }
+            // Simple view: the phone layout, with its floating tool bar, on this tablet.
+            let label = "Simple view";
+            let galley = ui.painter().layout_no_wrap(label.to_string(), egui::FontId::proportional(13.5), pal.dim);
+            let labelled = r.min.x - x > galley.size().x + 60.0;
+            let w = if labelled { galley.size().x + 40.0 } else { 36.0 };
+            let s_rect = Rect::from_min_size(pos2(r.min.x - 6.0 - w, y - 17.0), vec2(w, 34.0));
+            if s_rect.min.x > x {
+                let resp = ui.interact(s_rect, egui::Id::unique("suite_simple"), Sense::click());
+                resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
+                if resp.hovered() || resp.is_pointer_button_down_on() {
+                    ui.painter().rect_filled(s_rect, 17.0, pal.line);
+                }
+                // A small pill.
+                let pill = Rect::from_center_size(pos2(s_rect.min.x + 18.0, y), vec2(18.0, 9.0));
+                ui.painter().rect_stroke(pill, 4.5, Stroke::new(1.6, pal.text), egui::StrokeKind::Inside);
+                if labelled {
+                    ui.painter().galley(pos2(s_rect.min.x + 32.0, y - galley.size().y / 2.0), galley, pal.text);
+                }
+                if resp.clicked() {
+                    go = Some(BarAction::Simple);
+                }
+            }
         }
     });
     go
@@ -1241,7 +1665,58 @@ mod tests {
     }
 
     #[test]
-    fn opened_documents_start_in_read_mode_and_typing_leaves_them_alone() {
+    fn the_document_showing_opens_again_after_the_process_ends() {
+        let ctx = egui::Context::default();
+        let dir = temp("resume");
+        let paths = SuitePaths { resume: Some(dir.join("resume.json")), ..Default::default() };
+        let txt = dir.join("kept.txt");
+        std::fs::write(&txt, "Still here").unwrap();
+        {
+            let mut s = Suite::new(Picker::new(None), paths.clone());
+            frames(&ctx, &mut s, 1);
+            s.open_in_app(&ctx, &txt.to_string_lossy());
+            frames(&ctx, &mut s, 2);
+        }
+        // A new process: the same document shows again, without the user opening it.
+        let ctx = egui::Context::default();
+        let mut s = Suite::new(Picker::new(None), paths.clone());
+        frames(&ctx, &mut s, 2);
+        assert_eq!(s.active, Some(AppKind::Writer));
+        let w = s.writer.as_ref().unwrap();
+        assert!(w.word.session.doc.plain_text(wordcraft_doc::StoryRef::Body).contains("Still here"));
+        // Back on the home screen when the process ends: it starts there.
+        s.switch(&ctx, None);
+        frames(&ctx, &mut s, 1);
+        let mut s = Suite::new(Picker::new(None), paths);
+        frames(&ctx, &mut s, 1);
+        assert_eq!(s.active, None);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_tablet_can_use_the_phone_layout_and_keeps_that_choice() {
+        let ctx = egui::Context::default();
+        let dir = temp("simple");
+        let paths = SuitePaths { writer_prefs: Some(dir.join("ui.json")), ..Default::default() };
+        let tablet = Rect::from_min_size(pos2(0.0, 0.0), vec2(1200.0, 800.0));
+        let mut s = Suite::new(Picker::new(None), paths.clone());
+        s.switch(&ctx, Some(AppKind::Writer));
+        frames_with(&ctx, &mut s, 3, tablet);
+        assert!(s.writer.as_ref().unwrap().word.host_chrome.title_bar, "a tablet keeps its own layout");
+        s.set_simple_on_tablet(true);
+        frames_with(&ctx, &mut s, 2, tablet);
+        assert!(!s.writer.as_ref().unwrap().word.host_chrome.title_bar, "Simple view: the phone layout");
+        // Kept for the next start; Tablet layout turns it off again.
+        let mut s = Suite::new(Picker::new(None), paths);
+        assert!(s.simple_on_tablet);
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::TabletLayout);
+        assert!(!s.simple_on_tablet);
+        assert!(!dir.join("simple-layout").exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn opened_documents_are_ready_to_edit_and_reading_keeps_typing_out() {
         let ctx = egui::Context::default();
         let dir = temp("read");
         let (mut s, _) = suite(true);
@@ -1249,7 +1724,12 @@ mod tests {
         std::fs::write(&txt, "Dear committee").unwrap();
         s.open_in_app(&ctx, &txt.to_string_lossy());
         frames(&ctx, &mut s, 3);
-        assert!(s.writer.as_ref().unwrap().word.session.view.read_mode, "an opened document shows in Read Mode");
+        let view = &s.writer.as_ref().unwrap().word.session.view;
+        assert!(!view.read_mode, "no Read Mode: the document opens for editing");
+        // The tool bar's Read: the page fits the screen's width, and typing is kept out.
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::Read);
+        assert!(s.phone.reading);
+        assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Print", "the page as it prints");
         let window = Rect::from_min_size(pos2(0.0, 0.0), vec2(420.0, 860.0));
         for _ in 0..3 {
             let mut raw = egui::RawInput { screen_rect: Some(window), events: vec![egui::Event::Text("x".into())], ..Default::default() };
@@ -1260,12 +1740,18 @@ mod tests {
             })
             .drop_without_applying_deltas();
         }
-        let w = s.writer.as_mut().unwrap();
+        let w = s.writer.as_ref().unwrap();
         assert_eq!(w.word.session.doc.plain_text(wordcraft_doc::StoryRef::Body).trim(), "Dear committee", "typing doesn't change it");
         assert!(!w.word.session.dirty);
-        // Edit Document: back to Print Layout, for editing.
-        w.word.run("view.printLayout", json!({})).unwrap();
-        assert!(!w.word.session.view.read_mode);
+        // Web: text wrapped to the screen at 100%; Bigger makes it bigger.
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::ReadWeb(true));
+        assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Web");
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::TextSize(1));
+        assert!((s.writer.as_ref().unwrap().word.session.view.zoom - 1.2).abs() < 0.01);
+        // Edit: typing works again, on the printed page.
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::Edit);
+        assert!(!s.phone.reading);
+        assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Print");
         let _ = std::fs::remove_dir_all(dir);
     }
 

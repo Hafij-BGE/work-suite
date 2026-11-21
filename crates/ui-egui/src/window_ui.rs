@@ -166,6 +166,7 @@ impl WordApp {
             print_feedback_seen: _,
             font_generation: _,
             integrated_titlebar: _,
+            host_chrome: _,
             mac_titlebar: _,
             control_rx: _,
             updates_rt: _,

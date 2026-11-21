@@ -3,6 +3,29 @@ WorkSuite, made by Md Hafijur Rahman: a free, open-source office suite for Andro
 
 **Preview:** expect rough edges, and please report what you find in an issue.
 
+## New in 0.9.11: a phone layout
+
+- On a phone (portrait or landscape) the top bar is slim: Back, the document's name, Undo, Redo
+  and a menu (File, Save, Find, Advanced ribbon, and the other apps). The bar of apps and the
+  title row are gone, so the page gets more room.
+- A floating tool bar at the bottom has what most edits need: Format (bold, italic, underline,
+  strikethrough, text size, colour, highlight), Paragraph (alignment, lists, indent), Picture,
+  Find, Keyboard and Read. Ribbon shows the full ribbon when you need more.
+- Documents open ready to edit, no longer in Read Mode. Read in the tool bar fits the page to
+  the screen's width and keeps typing out. While reading, Web wraps the text to the screen,
+  Page goes back to the printed page, and Smaller / Bigger change the text size. Edit lets you
+  type again.
+- An open document stays open: if Android closes WorkSuite in the background (or you swipe it
+  away), the same document opens again next time. Unsaved Writer changes are in File › Recover.
+- On a tablet the layout stays as it was, with a new Hide ribbon / Show ribbon button, and
+  Simple view, which uses the phone layout and its floating tool bar on the tablet too. The
+  menu's Tablet layout goes back. The choice is kept.
+- The app starts faster: fonts load in the background while the home screen shows.
+- Fonts you add or download are kept for Slides and Sheets too: they no longer ask for the same
+  font again after the app restarts.
+- For Microsoft fonts that have no free download (Calibri, Cambria, Segoe UI…), the font card
+  now says so, and points to importing your own copy or using the free stand-in.
+
 ## New in 0.9.10: updated Writer, Slides and Sheets
 
 - Writer, Slides and Sheets now include the latest changes from the ArtCraft team's WordCraft,

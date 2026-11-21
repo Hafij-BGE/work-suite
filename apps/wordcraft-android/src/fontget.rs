@@ -94,6 +94,13 @@ const NOT_FREE: &[&str] = &[
     "bookman old style",
 ];
 
+/// A Microsoft font with no free download from Microsoft (it comes with Windows or Office): the
+/// font bar says so, and offers its stand-in and importing the user's own copy.
+pub fn microsoft_not_free(name: &str) -> bool {
+    let n = name.trim().to_lowercase();
+    NOT_FREE.iter().any(|f| n.starts_with(f)) && !CORE.iter().any(|(c, _)| *c == n)
+}
+
 /// Where `name` can be downloaded from, best first.
 pub fn sources(name: &str) -> Vec<Source> {
     let n = name.trim().to_lowercase();
@@ -308,6 +315,8 @@ mod tests {
         assert_eq!(sources("Montserrat"), [Source::Google { family: "Montserrat".into(), twin: false }]);
         assert!(sources("../etc").is_empty());
         assert_eq!(sources("Aptos")[0].vendor(), "Microsoft");
+        assert!(microsoft_not_free("Calibri Light") && microsoft_not_free("Segoe UI"));
+        assert!(!microsoft_not_free("Arial") && !microsoft_not_free("Webdings") && !microsoft_not_free("Aptos"));
     }
 
     #[test]

@@ -61,10 +61,13 @@ pub struct Chrome {
     /// The ribbon's File tab and the Backstage view it opens (also reached by keyboard and
     /// commands such as `ui.backstage`).
     pub file_tab: bool,
+    /// The ribbon (its tab row included). A host with its own tool bar (the Android phone
+    /// layout) turns it off; the File view still opens by command.
+    pub ribbon: bool,
 }
 
 impl Default for Chrome {
     fn default() -> Self {
-        Chrome { title_bar: true, file_tab: true }
+        Chrome { title_bar: true, file_tab: true, ribbon: true }
     }
 }
