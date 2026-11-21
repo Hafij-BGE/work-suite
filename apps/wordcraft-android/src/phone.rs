@@ -41,6 +41,10 @@ pub enum Act {
     Edit,
     /// Read the document: the page as wide as the screen, typing kept out.
     Read,
+    /// While reading: text wrapped to the screen (Web Layout, `true`) or the printed page.
+    ReadWeb(bool),
+    /// While reading: bigger (`1`) or smaller (`-1`) text.
+    TextSize(i8),
     /// Show another app.
     Switch(AppKind),
     /// Run one of the app's commands.
@@ -76,6 +80,8 @@ pub struct BarInfo {
     pub can_redo: bool,
     /// Writer's document shows for reading: the tool bar offers Edit instead of formatting.
     pub read_mode: bool,
+    /// Reading in Web Layout (text wrapped to the screen).
+    pub web: bool,
     /// Hide the tool bar (a dialog, the File view, the start screen).
     pub hide_tools: bool,
     /// Writer's character formatting at the caret (bold, italic, underline, strike).
@@ -226,6 +232,9 @@ impl PhoneUi {
         let mut items: Vec<(&'static str, Tool)> = Vec::new();
         if info.read_mode {
             items.push(("Edit", Tool::Edit));
+            items.push(if info.web { ("Page", Tool::Page) } else { ("Web", Tool::Web) });
+            items.push(("Smaller", Tool::Smaller));
+            items.push(("Bigger", Tool::Bigger));
         } else {
             items.push(("Format", Tool::Sheet(Sheet::Format)));
             items.push((if info.kind == AppKind::Sheets { "Align" } else { "Paragraph" }, Tool::Sheet(Sheet::Paragraph)));
@@ -274,6 +283,10 @@ impl PhoneUi {
                         Tool::Sheet(s) => self.sheet = if self.sheet == Some(*s) { None } else { Some(*s) },
                         Tool::Edit => act = Some(Act::Edit),
                         Tool::Read => act = Some(Act::Read),
+                        Tool::Web => act = Some(Act::ReadWeb(true)),
+                        Tool::Page => act = Some(Act::ReadWeb(false)),
+                        Tool::Smaller => act = Some(Act::TextSize(-1)),
+                        Tool::Bigger => act = Some(Act::TextSize(1)),
                         Tool::Picture => act = Some(Act::Cmd("insert.picture", serde_json::json!({}))),
                         Tool::Find => act = Some(Act::Find),
                         Tool::Keyboard => act = Some(Act::Keyboard),
@@ -302,6 +315,10 @@ enum Tool {
     Sheet(Sheet),
     Edit,
     Read,
+    Web,
+    Page,
+    Smaller,
+    Bigger,
     Picture,
     Find,
     Keyboard,
@@ -542,6 +559,17 @@ fn paint_tool(p: &egui::Painter, r: Rect, tool: Tool, c: Color32) {
                 let cell = Rect::from_min_size(pos2(r.min.x + 1.0 + dx * (q + 2.0), r.min.y + 1.0 + dy * (q + 2.0)), vec2(q, q));
                 p.rect_stroke(cell, 3.0, s, StrokeKind::Inside);
             }
+        }
+        Tool::Web => paint_lines(p, r.shrink(1.0), c, 3),
+        Tool::Page => {
+            let page = Rect::from_center_size(r.center(), vec2(r.width() * 0.7, r.height() - 2.0));
+            p.rect_stroke(page, 2.0, s, StrokeKind::Inside);
+            paint_lines(p, page.shrink2(vec2(3.0, 4.0)), c, 0);
+        }
+        Tool::Smaller | Tool::Bigger => {
+            let (size, sign) = if tool == Tool::Bigger { (19.0, "+") } else { (14.0, "−") };
+            p.text(pos2(r.center().x - 3.0, r.max.y - 2.0), Align2::CENTER_BOTTOM, "A", FontId::proportional(size), c);
+            p.text(pos2(r.max.x, r.min.y + 2.0), Align2::RIGHT_TOP, sign, FontId::proportional(12.0), c);
         }
         Tool::Read => {
             // An open book.

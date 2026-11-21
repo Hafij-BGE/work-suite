@@ -845,6 +845,7 @@ impl Suite {
             can_undo: true,
             can_redo: true,
             read_mode: false,
+            web: false,
             hide_tools: false,
             marks: [false; 4],
         };
@@ -858,6 +859,7 @@ impl Suite {
                         info.can_undo = word.session.can_undo();
                         info.can_redo = word.session.can_redo();
                         info.read_mode = self.phone.reading;
+                        info.web = format!("{:?}", word.session.view.mode) == "Web";
                     }
                 }
             }
@@ -902,6 +904,13 @@ impl Suite {
             },
             Act::Edit => {
                 self.phone.reading = false;
+                // Editing on the printed page (Web Layout misplaces floating text boxes).
+                if let Some(w) = &mut self.writer
+                    && format!("{:?}", w.word.session.view.mode) == "Web"
+                {
+                    let _ = w.word.run("view.printLayout", json!({}));
+                    let _ = w.word.run("view.pageWidth", json!({}));
+                }
                 self.want_keyboard = false;
             }
             Act::Read => {
@@ -915,6 +924,26 @@ impl Suite {
                     w.word.canvas.want_focus = false;
                 }
                 self.want_keyboard = false;
+            }
+            Act::ReadWeb(web) => {
+                if let Some(w) = &mut self.writer {
+                    if web {
+                        // Text wrapped to the screen, at a size made for reading.
+                        let _ = w.word.run("view.webLayout", json!({}));
+                        let _ = w.word.run("view.zoom", json!({"value": 100}));
+                    } else {
+                        let _ = w.word.run("view.printLayout", json!({}));
+                        let _ = w.word.run("view.pageWidth", json!({}));
+                    }
+                    w.word.canvas.want_focus = false;
+                }
+            }
+            Act::TextSize(step) => {
+                if let Some(w) = &mut self.writer {
+                    let pct = (w.word.session.view.zoom * 100.0 / 5.0).round() * 5.0 + f32::from(step) * 20.0;
+                    let _ = w.word.run("view.zoom", json!({"value": pct.clamp(25.0, 300.0)}));
+                    w.word.canvas.want_focus = false;
+                }
             }
             Act::Keyboard => {
                 if let Some(w) = &mut self.writer {
@@ -1632,7 +1661,12 @@ mod tests {
         let w = s.writer.as_ref().unwrap();
         assert_eq!(w.word.session.doc.plain_text(wordcraft_doc::StoryRef::Body).trim(), "Dear committee", "typing doesn't change it");
         assert!(!w.word.session.dirty);
-        // Edit: typing works again.
+        // Web: text wrapped to the screen at 100%; Bigger makes it bigger.
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::ReadWeb(true));
+        assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Web");
+        s.act(&ctx, AppKind::Writer, crate::phone::Act::TextSize(1));
+        assert!((s.writer.as_ref().unwrap().word.session.view.zoom - 1.2).abs() < 0.01);
+        // Edit: typing works again, on the printed page.
         s.act(&ctx, AppKind::Writer, crate::phone::Act::Edit);
         assert!(!s.phone.reading);
         assert_eq!(format!("{:?}", s.writer.as_ref().unwrap().word.session.view.mode), "Print");
